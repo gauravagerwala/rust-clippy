@@ -2,6 +2,8 @@
 
 #![allow(clippy::module_name_repetitions)]
 
+use core::cmp::Ordering;
+use core::mem;
 use core::str::pattern::{Pattern, ReverseSearcher};
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
@@ -252,6 +254,13 @@ mod source_text {
         #[must_use]
         pub fn file(&self) -> &Arc<SourceFile> {
             &self.file
+        }
+
+        /// Converts this into it's inner source file handle.
+        #[inline]
+        #[must_use]
+        pub fn into_file(self) -> Arc<SourceFile> {
+            self.file
         }
     }
 }
@@ -639,29 +648,10 @@ impl<'sm> SourceFileRange<'sm> {
     /// cause the `)` to be placed inside the line comment as `( // Some comment)`.
     #[must_use]
     pub fn add_leading_whitespace(&mut self) -> Option<&mut Self> {
-        let text_before = self.file_text().get(..self.range.start.to_usize())?.trim_end();
-        let range = self.range.clone();
-        let file = self.file();
-        let lines = self.file().lines();
-
-        // First check if extending backwards crosses lines into a comment line.
-        let post_search_line = lines.partition_point(|&pos| pos.to_usize() <= text_before.len());
-        if let Some(&search_line_end) = lines.get(post_search_line)
-            // Did we extend pass a line boundary?
-            && search_line_end <= range.start
-            && let search_start = lines.get(post_search_line - 1).map_or(0, |&x| x.to_usize())
-            && ends_with_line_comment_or_broken(&text_before[search_start..])
-            // Next check if there's anything after the current range on the same line.
-            && let next_line = lines.partition_point(|&pos| pos < range.end)
-            && let next_start = lines.get(next_line).map_or(file.source_len, |&x| x)
-            && tokenize(self.file_text().get(range.end.to_usize()..next_start.to_usize())?, FrontmatterAllowed::No)
-                .any(|t| !matches!(t.kind, TokenKind::Whitespace))
-        {
-            // Do nothing; removing whitespace would move code into a comment.
-        } else {
-            self.set_range(RelativeBytePos::from_usize(text_before.len())..range.end);
+        match leading_whitespace_idx(&self.file, self.range.clone())? {
+            LeadingWhitespaceRes::Comment => Some(self),
+            LeadingWhitespaceRes::Pos(pos) => Some(self.set_range(pos..self.range.end)),
         }
-        Some(self)
     }
 
     /// Extends the range to include all trailing whitespace.
@@ -769,6 +759,351 @@ impl fmt::Debug for SourceFileRange<'_> {
                 end_offset.0,
             )
         }
+    }
+}
+
+enum LeadingWhitespaceRes {
+    Comment,
+    Pos(RelativeBytePos),
+}
+
+/// Gets the index to use as the start of the leading whitespace preceding the specified range.
+///
+/// If the whitespace cannot be removed safely this will return the `false` and the original
+/// position.
+fn leading_whitespace_idx(src: &SourceText, range: Range<RelativeBytePos>) -> Option<LeadingWhitespaceRes> {
+    let text_before = src.get(..range.start.to_usize())?.trim_end();
+    let file = &**src.file();
+    let lines = file.lines();
+
+    // First check if extending backwards crosses lines into a comment line.
+    let post_search_line = lines.partition_point(|&pos| pos.to_usize() <= text_before.len());
+    if let Some(&search_line_end) = lines.get(post_search_line)
+        // Did we extend pass a line boundary?
+        && search_line_end <= range.start
+        && let search_start = lines.get(post_search_line - 1).map_or(0, |&x| x.to_usize())
+        && ends_with_line_comment_or_broken(&text_before[search_start..])
+        // Next check if there's anything after the current range on the same line.
+        && let next_line = lines.partition_point(|&pos| pos < range.end)
+        && let next_start = lines.get(next_line).map_or(file.source_len, |&x| x)
+        && tokenize(src.get(range.end.to_usize()..next_start.to_usize())?, FrontmatterAllowed::No)
+            .any(|t| !matches!(t.kind, TokenKind::Whitespace))
+    {
+        // Removing the whitespace would move code into a comment.
+        Some(LeadingWhitespaceRes::Comment)
+    } else {
+        Some(LeadingWhitespaceRes::Pos(RelativeBytePos::from_usize(
+            text_before.len(),
+        )))
+    }
+}
+
+/// Writes the suggestions needed to remove the given items from a single list. Returns whether the
+/// suggestion could be generated.
+///
+/// This function is not suitable for removing every item in a list. This function may succeed at
+/// generating a suggestion for that case, but it is not guaranteed to succeed nor will it generate
+/// an optimal suggestion when it does.
+///
+/// When selecting a separator to remove for an item this will prefer, in order, staying on the same
+/// line as the start/end of the item and taking a trailing separator. In the event that a separator
+/// cannot be found no suggestion will be generated and this function will return `false`.
+#[must_use]
+#[inline]
+pub fn gen_list_item_removal_sugg_into<'sm>(
+    sm: impl HasSourceMap<'sm>,
+    ctxt: SyntaxContext,
+    sep: char,
+    spans: impl IntoIterator<Item = Range<BytePos>>,
+    dst: &mut Vec<(Span, String)>,
+) -> bool {
+    fn f(
+        sm: &SourceMap,
+        ctxt: SyntaxContext,
+        sep: char,
+        spans: impl IntoIterator<Item = Range<BytePos>>,
+        dst: &mut Vec<(Span, String)>,
+    ) -> bool {
+        let Some((sf, ranges)) = gen_list_item_removal_spans(sm, sep, spans) else {
+            return false;
+        };
+        dst.extend(ranges.iter().map(|r| {
+            (
+                Span::new(
+                    BytePos(r.start.0 + sf.start_pos.0),
+                    BytePos(r.end.0 + sf.start_pos.0),
+                    ctxt,
+                    None,
+                ),
+                String::new(),
+            )
+        }));
+        true
+    }
+    f(sm.source_map(), ctxt, sep, spans, dst)
+}
+
+/// Generates a list of spans which, when removed, will remove the given items from a single list.
+/// Returns `None` if a suggestion cannot be generated.
+///
+/// This function is not suitable for removing every item in a list. This function may succeed at
+/// generating a suggestion for that case, but it is not guaranteed to succeed nor will it generate
+/// an optimal suggestion when it does.
+///
+/// When selecting a separator to remove for an item this will prefer, in order, staying on the same
+/// line as the start/end of the item and taking a trailing separator. In the event that a separator
+/// cannot be found no suggestion will be generated.
+#[inline]
+pub fn gen_list_item_removal_spans<'sm>(
+    sm: impl HasSourceMap<'sm>,
+    sep: char,
+    spans: impl IntoIterator<Item = Range<BytePos>>,
+) -> Option<(Arc<SourceFile>, Vec<Range<RelativeBytePos>>)> {
+    fn f(
+        sm: &SourceMap,
+        sep: char,
+        spans: impl IntoIterator<Item = Range<BytePos>>,
+    ) -> Option<(Arc<SourceFile>, Vec<Range<RelativeBytePos>>)> {
+        let mut spans = spans.into_iter();
+        let mut ranges = Vec::with_capacity(spans.size_hint().0);
+
+        let first = spans.next()?.get_source_range(sm)?;
+        ranges.push(first.range.clone());
+        for sp in spans {
+            let next = sp.get_source_range(sm)?;
+            if !first.is_same_file_as(&next) {
+                return None;
+            }
+            ranges.push(next.range);
+        }
+
+        merge_list_item_removal_sugg(&first.file, sep, &mut ranges)?;
+        Some((first.file.into_file(), ranges))
+    }
+    f(sm.source_map(), sep, spans)
+}
+
+#[expect(clippy::cast_possible_truncation)]
+fn merge_list_item_removal_sugg(src: &SourceText, sep: char, ranges: &mut Vec<Range<RelativeBytePos>>) -> Option<()> {
+    ranges.sort_unstable_by_key(|x| x.start);
+
+    // For each range:
+    // * Search for a trailing separator on the same line.
+    // * If not found, search for a leading separator on the same line reaching across previous removals
+    //   if needed.
+    // * If not found, search across lines for a trailing separator.
+    // * If not found, search across lines for a leading separator reaching across previous removals if
+    //   needed.
+    // * If it's still not found a suggestion cannot be generated.
+
+    // The current removal being generated. This will absorb subsequent items if there's
+    // nothing in between.
+    let mut range = ranges.first()?.clone();
+
+    // Where the previous removal range ended. Needed to avoid matching a previously
+    // removed separator when searching backwards.
+    let mut prev_end = 0;
+
+    // The indices of the current item we are working on and where to store the next item
+    // when it's complete. These will desync when multiple items are combined into the same
+    // suggestion so we can't use an iterator.
+    //
+    // The same vec is used for input/output in order to avoid an extra allocation.
+    let mut read_idx = 0;
+    let mut write_idx = 0usize;
+    loop {
+        let before = src.get(prev_end as usize..range.start.0 as usize)?;
+        let after = src.get(range.end.0 as usize..)?;
+        let res = find_sep_same_line(after, sep);
+        if let Some(trim_idx) = res.search_idx {
+            // Remove the trailing separator and whitespace.
+            // This will also remove whitespace following the separator.
+            if let Some(eol_idx) = res.eol_idx
+                && let Some(rev_idx) = find_line_start_skip_ws(before)
+            {
+                // The whole line can be removed.
+                range = RelativeBytePos(prev_end + rev_idx)..RelativeBytePos(range.end.0 + eol_idx);
+            } else {
+                range.end = RelativeBytePos(range.end.0 + trim_idx);
+            }
+        } else {
+            // No trailing separator on the same line; try looking backwards.
+            let rev_res = find_sep_rev_same_line(before, sep);
+            if let Some(rev_trim_idx) = rev_res.search_idx {
+                // Remove the leading separator and whitespace.
+                // This will only remove whitespace preceding the separator if there's
+                // also a non-whitespace character preceding it on the same line.
+                if let Some(eol_idx) = res.eol_idx
+                    && let Some(rev_eol_idx) = rev_res.eol_idx
+                {
+                    // The whole line can be removed.
+                    range = RelativeBytePos(prev_end + rev_eol_idx)..RelativeBytePos(range.end.0 + eol_idx);
+                } else {
+                    range.start = RelativeBytePos(prev_end + rev_trim_idx);
+                }
+            } else if let Some(eol_idx) = res.eol_idx
+                && let Some(after_stripped) = after.get(eol_idx as usize..)
+                && let Some(after_stripped) = after_stripped.trim_start().strip_prefix(sep)
+            {
+                // Remove the trailing separator on a different line.
+                range.end = RelativeBytePos(range.end.0 + (after.len() - after_stripped.trim_start().len()) as u32);
+            } else {
+                // Search backwards across lines looking for a separator.
+                // First merge all the previous ranges separated only by whitespace.
+                if let Some(mut prev_idx) = write_idx.checked_sub(1) {
+                    loop {
+                        let prev = &ranges[prev_idx];
+                        prev_end = prev.end.0;
+                        if !src
+                            .get(prev_end as usize..range.start.0 as usize)?
+                            .trim_start()
+                            .is_empty()
+                        {
+                            break;
+                        }
+                        range.start = prev.start;
+                        write_idx = prev_idx;
+
+                        let Some(idx) = prev_idx.checked_sub(1) else {
+                            prev_end = 0;
+                            break;
+                        };
+                        prev_idx = idx;
+                    }
+                }
+
+                if let LeadingWhitespaceRes::Pos(rev_trim_idx) = leading_whitespace_idx(src, range.clone())?
+                    && let Some(before) = src.get(prev_end as usize..rev_trim_idx.to_usize())
+                    && let Some(before_trimmed) = before.strip_suffix(sep)
+                {
+                    range.start = RelativeBytePos(prev_end + (before.len() - before_trimmed.trim_end().len()) as u32);
+                } else {
+                    // No separator could be found.
+                    return None;
+                }
+            }
+        }
+
+        read_idx += 1;
+        let Some(next) = ranges.get(read_idx).cloned() else {
+            ranges[write_idx] = range;
+            // Adjacent ranges need to be merged to prevent debug assertions.
+            let mut dst_idx = 0;
+            for i in 1..=write_idx {
+                if ranges[dst_idx].end == ranges[i].start {
+                    ranges[dst_idx].end = ranges[i].end;
+                } else {
+                    dst_idx += 1;
+                    ranges[dst_idx] = ranges[i].clone();
+                }
+            }
+            // Truncate to signal the actual number of removed ranges.
+            ranges.truncate(dst_idx + 1);
+            return Some(());
+        };
+        match range.end.cmp(&next.start) {
+            Ordering::Less => {
+                prev_end = range.end.0;
+                ranges[write_idx] = mem::replace(&mut range, next);
+                write_idx += 1;
+            },
+            Ordering::Equal => range.end = next.end,
+            // Can't remove overlapping spans.
+            Ordering::Greater => return None,
+        }
+    }
+}
+
+/// The result of searching for a cut point within a single line of a string.
+#[derive(Clone, Copy)]
+struct LineCutPoint {
+    /// Where to slice the string to remove requested item.
+    search_idx: Option<u32>,
+
+    /// Where to slice the string to remove the discovered line ending.
+    ///
+    /// This will be `Some(0)` of `Some(len)` if the start or end of the string
+    /// is reached respectively. This treats the start/end of the string as the
+    /// start/end of a line, but will not remove any line endings as the do not
+    /// exist.
+    ///
+    /// For `\n` line endings both forwards and backwards searches will operate
+    /// the same. For `\r\n` line endings forwards searches will remove both bytes,
+    /// but backwards searches will only remove the `\n` byte.
+    eol_idx: Option<u32>,
+}
+
+#[expect(clippy::cast_possible_truncation)]
+fn find_line_start_skip_ws(s: &str) -> Option<u32> {
+    for (i, c) in s.char_indices().rev() {
+        if c.is_whitespace() {
+            if c == '\n' {
+                return Some(i as u32 + 1);
+            }
+        } else {
+            return None;
+        }
+    }
+    Some(0)
+}
+
+#[expect(clippy::cast_possible_truncation)]
+fn find_sep_same_line(s: &str, sep: char) -> LineCutPoint {
+    let mut cr_pos = None;
+    let mut found_sep = false;
+    for (i, c) in s.char_indices() {
+        let i = i as u32;
+        if c.is_whitespace() {
+            match c {
+                '\r' => cr_pos = Some(i),
+                '\n' => {
+                    return LineCutPoint {
+                        search_idx: found_sep.then_some(cr_pos.unwrap_or(i)),
+                        eol_idx: Some(i + 1),
+                    };
+                },
+                _ => cr_pos = None,
+            }
+        } else if c == sep && !found_sep {
+            cr_pos = None;
+            found_sep = true;
+        } else {
+            return LineCutPoint {
+                search_idx: found_sep.then_some(i),
+                eol_idx: None,
+            };
+        }
+    }
+    LineCutPoint {
+        search_idx: found_sep.then_some(s.len() as u32),
+        eol_idx: Some(s.len() as u32),
+    }
+}
+
+#[expect(clippy::cast_possible_truncation)]
+fn find_sep_rev_same_line(s: &str, sep: char) -> LineCutPoint {
+    let mut sep_idx = None;
+    for (i, c) in s.char_indices().rev() {
+        let i = i as u32;
+        if c.is_whitespace() {
+            if c == '\n' {
+                return LineCutPoint {
+                    search_idx: sep_idx,
+                    eol_idx: Some(i + 1),
+                };
+            }
+        } else if c == sep && sep_idx.is_none() {
+            sep_idx = Some(i);
+        } else {
+            return LineCutPoint {
+                search_idx: sep_idx.is_some().then_some(i + c.len_utf8() as u32),
+                eol_idx: None,
+            };
+        }
+    }
+    LineCutPoint {
+        search_idx: sep_idx,
+        eol_idx: Some(0),
     }
 }
 
