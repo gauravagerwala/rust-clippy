@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, path_to_local_id, span_contains_cfg};
