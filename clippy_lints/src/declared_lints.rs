@@ -200,6 +200,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::if_let_mutex::IF_LET_MUTEX_INFO,
     crate::if_not_else::IF_NOT_ELSE_INFO,
     crate::if_then_some_else_none::IF_THEN_SOME_ELSE_NONE_INFO,
+    crate::ifs_as_logical_ops::IFS_AS_LOGICAL_OPS_INFO,
     crate::ifs::BRANCHES_SHARING_CODE_INFO,
     crate::ifs::IFS_SAME_COND_INFO,
     crate::ifs::IF_SAME_THEN_ELSE_INFO,

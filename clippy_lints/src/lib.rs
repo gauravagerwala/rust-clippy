@@ -149,6 +149,7 @@ mod future_not_send;
 mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
+mod ifs_as_logical_ops;
 mod ifs;
 mod ignored_unit_patterns;
 mod impl_hash_with_borrow_str_and_bytes;
@@ -819,5 +820,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(toplevel_ref_arg::ToplevelRefArg));
     store.register_late_pass(|_| Box::new(volatile_composites::VolatileComposites));
     store.register_late_pass(|_| Box::new(replace_box::ReplaceBox::default()));
+    store.register_late_pass(|_| Box::new(ifs_as_logical_ops::IfsAsLogicalOps));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
