@@ -1,7 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_never_expr;
 use clippy_utils::source::{HasSession, SpanRangeExt, walk_span_to_context};
-use clippy_utils::sym::clippy_utils;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::*;
