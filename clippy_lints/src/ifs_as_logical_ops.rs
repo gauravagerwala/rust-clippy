@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_never_expr;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::{HasSession, SpanRangeExt, walk_span_to_context};
 use clippy_utils::sym::clippy_utils;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -11,15 +11,27 @@ use rustc_session::declare_lint_pass;
 declare_clippy_lint! {
     /// ### What it does
     ///
+    /// Warn about cases where `x && y` could be used in place of an if condition.
+    ///
     /// ### Why is this bad?
+    ///
+    /// `x && y` is more standard as a construction, and makes it clearer that this is just an and.
+    /// It is also less verbose.
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
+    /// # fn is_string_instrument(instrument: Instrument, is_in_orchestra: boolean) {
+    /// #   if is_in_orchestra { is_orchestral_string_instrument(instrument) } else { false }
+    /// # }
+    ///
     /// ```
-    /// Use instead:
+    ///
+    /// Could be written
+    ///
     /// ```no_run
-    /// // example code which does not raise clippy warning
+    /// # fn is_string_instrument(instrument: Instrument, is_in_orchestra: boolean) {
+    /// #   is_in_orchestra && is_orchestral_string_instrument(instrument)
+    /// # }
     /// ```
     #[clippy::version = "1.89.0"]
     pub IFS_AS_LOGICAL_OPS,
@@ -43,18 +55,33 @@ impl<'tcx> LateLintPass<'tcx> for IfsAsLogicalOps {
             && matches!(lit.node, LitKind::Bool(false))
             // We do not emit this lint if the expression diverges.
             && !cx.typeck_results().expr_ty(if_expr).is_never()
+            // Make sure that the expression is only in a single macro context
+            && let ctxt = e.span.ctxt()
+            && ctxt == if_block.span.ctxt()
+            && ctxt == else_block.span.ctxt()
+            && ctxt == else_expr.span.ctxt()
+            && ctxt == lit.span.ctxt()
+            && !ctxt.in_external_macro(cx.tcx.sess().source_map())
         {
-            if let Some(lhs_snippet) = if_expr.span.get_source_text(cx)
-                && let Some(rhs_snippet) = lit.span.get_source_text(cx)
+            if let Some(lhs_snippet) = walk_span_to_context(cond.span, ctxt)
+                .map(|span| span.get_source_text(cx))
+                .flatten()
+                && let Some(rhs_snippet) = walk_span_to_context(if_expr.span, ctxt)
+                    .map(|span| span.get_source_text(cx))
+                    .flatten()
             {
                 span_lint_and_sugg(
                     cx,
                     IFS_AS_LOGICAL_OPS,
                     e.span,
-                    "Logical operations are clearer than if conditions in this instance",
+                    "if expression that could be written as a logical and expression",
                     "try",
                     format!("{lhs_snippet} && {rhs_snippet}"),
-                    Applicability::MachineApplicable,
+                    if ctxt.is_root() {
+                        Applicability::MachineApplicable
+                    } else {
+                        Applicability::MaybeIncorrect
+                    },
                 );
             }
         }
