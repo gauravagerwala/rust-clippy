@@ -105,10 +105,7 @@ declare_clippy_lint! {
     "usage of sub-optimal floating point operations"
 }
 
-declare_lint_pass!(FloatingPointArithmetic => [
-    IMPRECISE_FLOPS,
-    SUBOPTIMAL_FLOPS
-]);
+declare_lint_pass!(FloatingPointArithmetic => [IMPRECISE_FLOPS, SUBOPTIMAL_FLOPS]);
 
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e

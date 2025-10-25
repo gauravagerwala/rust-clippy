@@ -28,7 +28,6 @@ extern crate rustc_literal_escaper;
 pub mod dogfood;
 pub mod edit_lints;
 pub mod fmt;
-pub mod generate;
 pub mod lint;
 pub mod new_lint;
 pub mod release;
@@ -36,6 +35,7 @@ pub mod serve;
 pub mod setup;
 pub mod sync;
 
+mod generate;
 mod parse;
 mod utils;
 

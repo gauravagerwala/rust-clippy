@@ -126,7 +126,7 @@ pub struct LenZero {
     msrv: Msrv,
 }
 
-impl_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY, COMPARISON_TO_EMPTY]);
+impl_lint_pass!(LenZero => [COMPARISON_TO_EMPTY, LEN_WITHOUT_IS_EMPTY, LEN_ZERO]);
 
 impl LenZero {
     pub fn new(conf: &'static Conf) -> Self {

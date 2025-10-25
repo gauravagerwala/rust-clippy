@@ -28,7 +28,9 @@ declare_clippy_lint! {
     "use of disallowed default division and remainder operations"
 }
 
-declare_lint_pass!(IntegerDivisionRemainderUsed => [INTEGER_DIVISION_REMAINDER_USED]);
+declare_lint_pass!(IntegerDivisionRemainderUsed => [
+    INTEGER_DIVISION_REMAINDER_USED,
+]);
 
 impl LateLintPass<'_> for IntegerDivisionRemainderUsed {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
