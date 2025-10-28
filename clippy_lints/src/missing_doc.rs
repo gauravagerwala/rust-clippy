@@ -37,6 +37,8 @@ declare_clippy_lint! {
     "detects missing documentation for private members"
 }
 
+impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
+
 macro_rules! note_prev_span_then_ret {
     ($prev_span:expr, $span:expr) => {{
         $prev_span = Some($span);
@@ -171,8 +173,6 @@ impl MissingDoc {
         Some(search_span)
     }
 }
-
-impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn check_attributes(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {

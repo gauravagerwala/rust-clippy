@@ -64,6 +64,7 @@ declare_clippy_lint! {
     restriction,
     "indexing into a slice multiple times without an `assert`"
 }
+
 declare_lint_pass!(MissingAssertsForIndexing => [MISSING_ASSERTS_FOR_INDEXING]);
 
 fn report_lint<F>(cx: &LateContext<'_>, full_span: Span, msg: &'static str, indexes: &[Span], f: F)

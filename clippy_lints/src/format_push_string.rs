@@ -38,6 +38,7 @@ declare_clippy_lint! {
     pedantic,
     "`format!(..)` appended to existing `String`"
 }
+
 declare_lint_pass!(FormatPushString => [FORMAT_PUSH_STRING]);
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {

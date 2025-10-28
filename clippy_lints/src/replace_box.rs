@@ -33,6 +33,7 @@ declare_clippy_lint! {
     perf,
     "assigning a newly created box to `Box<T>` is inefficient"
 }
+
 declare_lint_pass!(ReplaceBox => [REPLACE_BOX]);
 
 impl LateLintPass<'_> for ReplaceBox {

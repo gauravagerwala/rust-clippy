@@ -81,6 +81,8 @@ declare_clippy_lint! {
     "checks for functions that allocate a lot of stack space"
 }
 
+impl_lint_pass!(LargeStackFrames => [LARGE_STACK_FRAMES]);
+
 pub struct LargeStackFrames {
     maximum_allowed_size: u64,
 }
@@ -92,8 +94,6 @@ impl LargeStackFrames {
         }
     }
 }
-
-impl_lint_pass!(LargeStackFrames => [LARGE_STACK_FRAMES]);
 
 #[derive(Copy, Clone)]
 enum Space {

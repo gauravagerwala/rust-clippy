@@ -49,12 +49,12 @@ declare_clippy_lint! {
     "`pub fn new() -> Self` method without `Default` implementation"
 }
 
+impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
+
 #[derive(Clone, Default)]
 pub struct NewWithoutDefault {
     impling_types: Option<HirIdSet>,
 }
-
-impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
 
 impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {

@@ -64,6 +64,8 @@ declare_clippy_lint! {
     "detects missing `#[inline]` attribute for public callables (functions, trait methods, methods...)"
 }
 
+declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
+
 fn check_missing_inline_attrs(
     cx: &LateContext<'_>,
     attrs: &[Attribute],
@@ -89,8 +91,6 @@ fn is_executable_or_proc_macro(cx: &LateContext<'_>) -> bool {
         .iter()
         .any(|t: &CrateType| matches!(t, CrateType::Executable | CrateType::ProcMacro))
 }
-
-declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
