@@ -44,61 +44,74 @@ declare_lint_pass!(IfsAsLogicalOps => [IFS_AS_LOGICAL_OPS]);
 
 impl<'tcx> LateLintPass<'tcx> for IfsAsLogicalOps {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) {
-        if let ExprKind::If(cond, cond_inner, Some(els)) = e.kind
+        if let ExprKind::If(if_cond, cond_inner, Some(els)) = e.kind
             && let ExprKind::Block(if_block, _label) = cond_inner.kind
             // Make sure the if block is not an if-let block.
-            && let ExprKind::DropTemps(_) = cond.kind
+            && let ExprKind::DropTemps(_) = if_cond.kind
             // Check if the if-block has only a return statement
             && if_block.stmts.is_empty()
-            && let Some(if_expr) = if_block.expr
-            // And that there are no comments or empty expansions for this block.
-            && (if_block.span.lo()..if_expr.span.lo()).check_source_text(cx, |src| src.trim_end() == "{")
+            && let Some(if_block_inner_expr) = if_block.expr
             // And that the else block consists of only the boolean 'false'.
             && let ExprKind::Block(else_block, _label) = els.kind
             && else_block.stmts.is_empty()
-            && let Some(else_expr) = else_block.expr
-            && let ExprKind::Lit(lit) = else_expr.kind
+            && let Some(else_block_inner_expr) = else_block.expr
+            && let ExprKind::Lit(lit) = else_block_inner_expr.kind
             && matches!(lit.node, LitKind::Bool(false))
-            // And that there are no comments or empty expansions for this block either.
-            && (else_block.span.lo()..else_expr.span.lo()).check_source_text(cx, |src| src.trim_end() == "{")
             // We do not emit this lint if the expression diverges.
-            && !cx.typeck_results().expr_ty(if_expr).is_never()
+            && !cx.typeck_results().expr_ty(if_block_inner_expr).is_never()
             // Make sure that the expression is only in a single macro context
             && let ctxt = e.span.ctxt()
             && ctxt == if_block.span.ctxt()
             && ctxt == else_block.span.ctxt()
-            && ctxt == else_expr.span.ctxt()
+            && ctxt == else_block_inner_expr.span.ctxt()
             && ctxt == lit.span.ctxt()
             && !ctxt.in_external_macro(cx.tcx.sess().source_map())
         {
             // Do not lint if the statement is trivially a boolean.
-            if let ExprKind::Lit(lit_ptr) = peel_blocks(if_expr).kind
+            if let ExprKind::Lit(lit_ptr) = peel_blocks(if_block_inner_expr).kind
                 && let LitKind::Bool(_) = lit_ptr.node
             {
                 return;
             }
-            let mut sugg = Sugg::hir(cx, cond, "_");
-            let rhs_sugg = Sugg::hir(cx, if_expr, "_");
 
-            sugg = sugg.and(&rhs_sugg);
+            let walked_option_if_block = walk_span_to_context(if_block.span, e.span.ctxt());
+            let walked_option_if_block_inner = walk_span_to_context(if_block_inner_expr.span, e.span.ctxt());
+            let walked_option_else_block = walk_span_to_context(else_block.span, e.span.ctxt());
+            let walked_option_else_block_inner = walk_span_to_context(else_block_inner_expr.span, e.span.ctxt());
 
-            if is_else_clause(cx.tcx, e) {
-                sugg = sugg.blockify();
-            }
-
-            span_lint_and_sugg(
-                cx,
-                IFS_AS_LOGICAL_OPS,
-                e.span,
-                "if expression that could be written as a logical and expression",
-                "try",
-                sugg.to_string(),
-                if ctxt.is_root() {
+            if let Some(walked_if_block) = walked_option_if_block
+                && let Some(walked_if_block_inner) = walked_option_if_block_inner
+                && let Some(walked_else_block) = walked_option_else_block
+                && let Some(walked_else_block_inner) = walked_option_else_block_inner
+                && (walked_if_block.lo()..walked_if_block_inner.lo()).check_source_text(cx, |src| src.trim_end() == "{")
+                && (walked_else_block.lo()..walked_else_block_inner.lo())
+                    .check_source_text(cx, |src| src.trim_end() == "{")
+            {
+                let mut applicability = if ctxt.is_root() {
                     Applicability::MachineApplicable
                 } else {
                     Applicability::MaybeIncorrect
-                },
-            );
+                };
+
+                let mut sugg = Sugg::hir_with_context(cx, if_cond, e.span.ctxt(), "_", &mut applicability);
+                let rhs_sugg = Sugg::hir_with_context(cx, if_block_inner_expr, e.span.ctxt(), "_", &mut applicability);
+
+                sugg = sugg.and(&rhs_sugg);
+
+                if is_else_clause(cx.tcx, e) {
+                    sugg = sugg.blockify();
+                }
+
+                span_lint_and_sugg(
+                    cx,
+                    IFS_AS_LOGICAL_OPS,
+                    e.span,
+                    "if expression that could be written as a logical and expression",
+                    "try",
+                    sugg.to_string(),
+                    applicability,
+                );
+            }
         }
     }
 }

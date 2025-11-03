@@ -11,16 +11,16 @@ fn basic_lint_test(b1: bool, b2: bool) -> bool {
     //~^ ifs_as_logical_ops
 }
 
-fn test_that_nested_expressions_produces_lint(b1: bool, b2: bool) -> bool {
+fn nested_expressions_produces_lint(b1: bool, b2: bool) -> bool {
     if b1 { { b2 } } else { false }
     //~^ ifs_as_logical_ops
 }
 
-fn test_that_diverging_does_not_produce_lint(b1: bool, b2: bool) -> bool {
+fn diverging_does_not_produce_lint(b1: bool, b2: bool) -> bool {
     if b1 { panic!() } else { false }
 }
 
-fn test_that_complex_expressions_do_not_produce_lint(b1: bool, b2: bool) -> bool {
+fn complex_expressions_do_not_produce_lint(b1: bool, b2: bool) -> bool {
     if b1 {
         let mut some_value = 100;
         if some_value < 50 {
@@ -32,7 +32,7 @@ fn test_that_complex_expressions_do_not_produce_lint(b1: bool, b2: bool) -> bool
     }
 }
 
-fn test_example_with_comment_does_not_lint(chars: Vec<char>) -> bool {
+fn example_with_if_comment_does_not_lint(chars: Vec<char>) -> bool {
     if !chars.is_empty() {
         // SAFETY: Always starts with ^[ and ends with m.
         chars.len() > 5
@@ -41,7 +41,26 @@ fn test_example_with_comment_does_not_lint(chars: Vec<char>) -> bool {
     }
 }
 
-fn test_example_with_debug_does_not_lint(b1: bool) -> bool {
+fn example_with_else_comment_does_not_lint(chars: Vec<char>) -> bool {
+    if !chars.is_empty() {
+        chars.len() > 5
+    } else {
+        // Watch out! Comment!
+        false
+    }
+}
+
+fn example_with_cfg_does_not_lint(chars: Vec<char>) -> bool {
+    if !chars.is_empty() {
+        #[cfg(false)]
+        return 2 * 2 == 5;
+        chars.len() > 5
+    } else {
+        false
+    }
+}
+
+fn example_with_debug_does_not_lint(b1: bool) -> bool {
     if b1 {
         dbg!("Something");
         true
@@ -50,11 +69,11 @@ fn test_example_with_debug_does_not_lint(b1: bool) -> bool {
     }
 }
 
-fn test_example_with_if_let_does_not_lint(b1: bool, b2: Option<i32>) -> bool {
+fn example_with_if_let_does_not_lint(b1: bool, b2: Option<i32>) -> bool {
     if let Some(30) = b2 { true } else { false }
 }
 
-fn test_else_if_does_lint(b1: bool, b2: bool, b3: bool) -> bool {
+fn else_if_does_lint(b1: bool, b2: bool, b3: bool) -> bool {
     if b1 {
         // There is some expansion here.
         let _ = 40;
@@ -85,11 +104,31 @@ macro_rules! nothing {
     () => {};
 }
 
-fn test_empty_expansion_does_not_lint(b1: bool, b2: bool) -> bool {
+fn empty_expansion_does_not_lint(b1: bool, b2: bool) -> bool {
     if b1 {
         nothing!();
         b2
     } else {
         false
     }
+}
+
+fn macro_with_comment_does_not_lint(b1: bool, num: i32) -> bool {
+    macro_rules! b2 {
+        () => {{ num > 33 }};
+    }
+    if b1 {
+        // watch out! Comment!
+        b2!()
+    } else {
+        false
+    }
+}
+
+fn macro_without_comment_does_lint(b1: bool, num: i32) -> bool {
+    macro_rules! b2 {
+        () => {{ num > 33 }};
+    }
+    if b1 { b2!() } else { false }
+    //~^ ifs_as_logical_ops
 }
