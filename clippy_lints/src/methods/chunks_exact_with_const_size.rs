@@ -17,11 +17,6 @@ pub(super) fn check(
     method_name: Symbol,
     msrv: Msrv,
 ) {
-    // Check for Rust version
-    if !msrv.meets(cx, msrvs::AS_CHUNKS) {
-        return;
-    }
-
     // Check if receiver is slice-like
     if !cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_slice() {
         return;
@@ -46,4 +41,7 @@ pub(super) fn check(
             format!("consider using `{suggestion}::<{arg_str}>()` for better ergonomics"),
         );
     }
+
+    // Check for Rust version
+    if !msrv.meets(cx, msrvs::AS_CHUNKS) {}
 }
