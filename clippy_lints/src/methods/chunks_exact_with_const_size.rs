@@ -1,12 +1,13 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source::snippet;
 use clippy_utils::sym;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_span::Symbol;
 
-use super::CHUNKS_EXACT_TO_AS_CHUNKS;
+use super::CHUNKS_EXACT_WITH_CONST_SIZE;
 
 pub(super) fn check(
     cx: &LateContext<'_>,
@@ -29,21 +30,21 @@ pub(super) fn check(
 
     // Check if argument is a constant
     let constant_eval = ConstEvalCtxt::new(cx);
-    if let Some(Constant::Int(chunk_size)) = constant_eval.eval(arg) {
+    if let Some(Constant::Int(_)) = constant_eval.eval(arg) {
         // Emit the lint
         let suggestion = if method_name == sym::chunks_exact_mut {
             "as_chunks_mut"
         } else {
             "as_chunks"
         };
-
+        let arg_str = snippet(cx, arg.span, "_");
         span_lint_and_help(
             cx,
-            CHUNKS_EXACT_TO_AS_CHUNKS,
+            CHUNKS_EXACT_WITH_CONST_SIZE,
             expr.span,
-            format!("using `{method_name}` with a constant chunk size"),
+            "chunks_exact_with_const_size",
             None,
-            format!("consider using `{suggestion}::<{chunk_size}>()` for better ergonomics"),
+            format!("consider using `{suggestion}::<{arg_str}>()` for better ergonomics"),
         );
     }
 }

@@ -9,7 +9,7 @@ mod chars_last_cmp;
 mod chars_last_cmp_with_unwrap;
 mod chars_next_cmp;
 mod chars_next_cmp_with_unwrap;
-mod chunks_exact_to_as_chunks;
+mod chunks_exact_with_const_size;
 mod clear_with_drain;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
@@ -2109,7 +2109,7 @@ declare_clippy_lint! {
     /// for chunk in chunks {}
     /// ```
     #[clippy::version = "1.93.0"]
-    pub CHUNKS_EXACT_TO_AS_CHUNKS,
+    pub CHUNKS_EXACT_WITH_CONST_SIZE,
     style,
     "using `chunks_exact` with constant when `as_chunks` is more ergonomic"
 }
@@ -4814,7 +4814,7 @@ impl_lint_pass!(Methods => [
     ITER_NTH,
     ITER_NTH_ZERO,
     BYTES_NTH,
-    CHUNKS_EXACT_TO_AS_CHUNKS,
+    CHUNKS_EXACT_WITH_CONST_SIZE,
     ITER_SKIP_NEXT,
     GET_UNWRAP,
     GET_LAST_WITH_LEN,
@@ -5744,7 +5744,7 @@ impl Methods {
                     );
                 },
                 (name @ (sym::chunks_exact | sym::chunks_exact_mut), [arg]) => {
-                    chunks_exact_to_as_chunks::check(cx, expr, recv, arg, name, self.msrv);
+                    chunks_exact_with_const_size::check(cx, expr, recv, arg, name, self.msrv);
                 },
                 _ => {},
             }
