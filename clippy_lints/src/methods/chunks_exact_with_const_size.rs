@@ -22,9 +22,8 @@ pub(super) fn check(
         return;
     }
 
-    // Check receiver is slice or array type
-    let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs();
-    if !recv_ty.is_slice() && !recv_ty.is_array() {
+    // Check if receiver is slice-like
+    if !cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_slice() {
         return;
     }
 
