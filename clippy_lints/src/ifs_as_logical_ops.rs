@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{SpanRangeExt, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_else_clause, peel_blocks};
+use clippy_utils::{higher, is_else_clause, peel_blocks};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for IfsAsLogicalOps {
         if let ExprKind::If(if_cond, cond_inner, Some(els)) = e.kind
             && let ExprKind::Block(if_block, _label) = cond_inner.kind
             // Make sure the if block is not an if-let block.
-            && let ExprKind::DropTemps(_) = if_cond.kind
+            && let Some(_) = higher::If::hir(e)
             // Check if the if-block has only a trailing expression
             && if_block.stmts.is_empty()
             && let Some(if_block_inner_expr) = if_block.expr
