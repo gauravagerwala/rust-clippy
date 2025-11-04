@@ -1,6 +1,5 @@
 #![warn(clippy::ifs_as_logical_ops)]
-#![allow(clippy::needless_bool)]
-#![allow(clippy::match_like_matches_macro)]
+#![expect(clippy::needless_bool)]
 
 fn main() {
     // test code goes here
@@ -69,8 +68,22 @@ fn example_with_debug_does_not_lint(b1: bool) -> bool {
     }
 }
 
-fn example_with_if_let_does_not_lint(b1: bool, b2: Option<i32>) -> bool {
-    if let Some(30) = b2 { true } else { false }
+fn basic_if_let_does_not_lint(b1: bool, b2: Option<i32>) -> bool {
+    if let Some(30) = b2 { b1 } else { false }
+}
+
+fn if_and_let_does_not_lint(b1: bool, b2: Option<i32>, b3: bool) -> bool {
+    if b1 && let Some(b) = b2 { b3 } else { false }
+}
+
+fn if_let_complex_does_not_lint(b1: bool, b2: Option<i32>, b3: bool) -> bool {
+    if let Some(b) = b2
+        && b1
+    {
+        b3
+    } else {
+        false
+    }
 }
 
 fn else_if_does_lint(b1: bool, b2: bool, b3: bool) -> bool {

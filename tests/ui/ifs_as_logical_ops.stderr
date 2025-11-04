@@ -1,5 +1,5 @@
 error: if expression that could be written as a logical and expression
-  --> tests/ui/ifs_as_logical_ops.rs:10:5
+  --> tests/ui/ifs_as_logical_ops.rs:9:5
    |
 LL |     if b1 { b2 } else { false }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b1 && b2`
@@ -8,13 +8,13 @@ LL |     if b1 { b2 } else { false }
    = help: to override `-D warnings` add `#[allow(clippy::ifs_as_logical_ops)]`
 
 error: if expression that could be written as a logical and expression
-  --> tests/ui/ifs_as_logical_ops.rs:15:5
+  --> tests/ui/ifs_as_logical_ops.rs:14:5
    |
 LL |     if b1 { { b2 } } else { false }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b1 && { b2 }`
 
 error: if expression that could be written as a logical and expression
-  --> tests/ui/ifs_as_logical_ops.rs:81:12
+  --> tests/ui/ifs_as_logical_ops.rs:94:12
    |
 LL |       } else if b2 {
    |  ____________^
@@ -25,7 +25,7 @@ LL | |     }
    | |_____^ help: try: `{ b2 && b3 }`
 
 error: if expression that could be written as a logical and expression
-  --> tests/ui/ifs_as_logical_ops.rs:132:5
+  --> tests/ui/ifs_as_logical_ops.rs:145:5
    |
 LL |     if b1 { b2!() } else { false }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b1 && b2!()`

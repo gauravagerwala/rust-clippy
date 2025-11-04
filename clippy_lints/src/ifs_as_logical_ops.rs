@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{HasSession, SpanRangeExt, walk_span_to_context};
+use clippy_utils::source::{SpanRangeExt, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_else_clause, peel_blocks};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for IfsAsLogicalOps {
             && let ExprKind::Block(if_block, _label) = cond_inner.kind
             // Make sure the if block is not an if-let block.
             && let ExprKind::DropTemps(_) = if_cond.kind
-            // Check if the if-block has only a return statement
+            // Check if the if-block has only a trailing expression
             && if_block.stmts.is_empty()
             && let Some(if_block_inner_expr) = if_block.expr
             // And that the else block consists of only the boolean 'false'.
@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for IfsAsLogicalOps {
             && ctxt == else_block.span.ctxt()
             && ctxt == else_block_inner_expr.span.ctxt()
             && ctxt == lit.span.ctxt()
-            && !ctxt.in_external_macro(cx.tcx.sess().source_map())
+            && !ctxt.in_external_macro(cx.sess().source_map())
         {
             // Do not lint if the statement is trivially a boolean.
             if let ExprKind::Lit(lit_ptr) = peel_blocks(if_block_inner_expr).kind
@@ -74,17 +74,9 @@ impl<'tcx> LateLintPass<'tcx> for IfsAsLogicalOps {
                 return;
             }
 
-            let walked_option_if_block = walk_span_to_context(if_block.span, e.span.ctxt());
-            let walked_option_if_block_inner = walk_span_to_context(if_block_inner_expr.span, e.span.ctxt());
-            let walked_option_else_block = walk_span_to_context(else_block.span, e.span.ctxt());
-            let walked_option_else_block_inner = walk_span_to_context(else_block_inner_expr.span, e.span.ctxt());
-
-            if let Some(walked_if_block) = walked_option_if_block
-                && let Some(walked_if_block_inner) = walked_option_if_block_inner
-                && let Some(walked_else_block) = walked_option_else_block
-                && let Some(walked_else_block_inner) = walked_option_else_block_inner
-                && (walked_if_block.lo()..walked_if_block_inner.lo()).check_source_text(cx, |src| src.trim_end() == "{")
-                && (walked_else_block.lo()..walked_else_block_inner.lo())
+            if let Some(walked_if_block_inner) = walk_span_to_context(if_block_inner_expr.span, ctxt)
+                && (if_block.span.lo()..walked_if_block_inner.lo()).check_source_text(cx, |src| src.trim_end() == "{")
+                && (else_block.span.lo()..else_block_inner_expr.span.lo())
                     .check_source_text(cx, |src| src.trim_end() == "{")
             {
                 let mut applicability = if ctxt.is_root() {
@@ -93,8 +85,8 @@ impl<'tcx> LateLintPass<'tcx> for IfsAsLogicalOps {
                     Applicability::MaybeIncorrect
                 };
 
-                let mut sugg = Sugg::hir_with_context(cx, if_cond, e.span.ctxt(), "_", &mut applicability);
-                let rhs_sugg = Sugg::hir_with_context(cx, if_block_inner_expr, e.span.ctxt(), "_", &mut applicability);
+                let mut sugg = Sugg::hir_with_context(cx, if_cond, ctxt, "_", &mut applicability);
+                let rhs_sugg = Sugg::hir_with_context(cx, if_block_inner_expr, ctxt, "_", &mut applicability);
 
                 sugg = sugg.and(&rhs_sugg);
 
