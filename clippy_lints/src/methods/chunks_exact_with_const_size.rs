@@ -42,7 +42,7 @@ pub(super) fn check(
             cx,
             CHUNKS_EXACT_WITH_CONST_SIZE,
             expr.span,
-            "chunks_exact_with_const_size",
+            format!("using `{method_name}` with a constant chunk size"),
             None,
             format!("consider using `{suggestion}::<{arg_str}>()` for better ergonomics"),
         );
