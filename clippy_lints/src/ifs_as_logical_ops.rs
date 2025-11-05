@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::If;
 use clippy_utils::source::{SpanRangeExt, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{higher, is_else_clause, peel_blocks};
+use clippy_utils::{is_else_clause, peel_blocks};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
