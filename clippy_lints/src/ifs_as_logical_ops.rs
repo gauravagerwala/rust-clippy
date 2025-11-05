@@ -46,13 +46,12 @@ declare_lint_pass!(IfsAsLogicalOps => [IFS_AS_LOGICAL_OPS]);
 impl<'tcx> LateLintPass<'tcx> for IfsAsLogicalOps {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) {
         // Make sure the if block is not an if-let block.
-        if let Some(If {cond: if_cond, then: cond_inner, r#else}) = If::hir(e)
+        if let Some(If {cond: if_cond, then: cond_inner, r#else: Some(els)}) = If::hir(e)
             && let ExprKind::Block(if_block, _label) = cond_inner.kind
             // Check if the if-block has only a trailing expression
             && if_block.stmts.is_empty()
             && let Some(if_block_inner_expr) = if_block.expr
             // And that the else block consists of only the boolean 'false'.
-            && let Some(els) = r#else
             && let ExprKind::Block(else_block, _label) = els.kind
             && else_block.stmts.is_empty()
             && let Some(else_block_inner_expr) = else_block.expr
