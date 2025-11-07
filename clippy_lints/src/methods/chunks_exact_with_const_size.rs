@@ -14,7 +14,6 @@ pub(super) fn check(
     cx: &LateContext<'_>,
     recv: &Expr<'_>,
     arg: &Expr<'_>,
-    expr_span: Span,
     call_span: Span,
     method_name: Symbol,
     msrv: Msrv,
@@ -41,10 +40,10 @@ pub(super) fn check(
 
         // Build the suggestion with proper applicability tracking
         let mut applicability = Applicability::MachineApplicable;
-        let recv_str = snippet_with_applicability(cx, recv.span, "_", &mut applicability);
         let arg_str = snippet_with_applicability(cx, arg.span, "_", &mut applicability);
 
-        let suggestion = format!("{recv_str}.{suggestion_method}::<{arg_str}>().0.iter()");
+        // Suggestion replaces just "chunks_exact(N)" with "as_chunks::<N>().0.iter()"
+        let suggestion = format!("{suggestion_method}::<{arg_str}>().0.iter()");
 
         span_lint_and_then(
             cx,
@@ -53,7 +52,7 @@ pub(super) fn check(
             format!("using `{method_name}` with a constant chunk size"),
             |diag| {
                 diag.span_suggestion(
-                    expr_span,
+                    call_span,
                     "consider using `as_chunks` instead",
                     suggestion,
                     applicability,

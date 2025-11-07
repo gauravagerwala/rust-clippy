@@ -2,9 +2,7 @@ error: using `chunks_exact` with a constant chunk size
   --> tests/ui/chunks_exact_with_const_size.rs:9:24
    |
 LL |     let result = slice.chunks_exact(4);
-   |                  ------^^^^^^^^^^^^^^^
-   |                  |
-   |                  help: consider using `as_chunks` instead: `slice.as_chunks::<4>().0.iter()`
+   |                        ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
    |
    = note: `-D clippy::chunks-exact-with-const-size` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_with_const_size)]`
@@ -13,33 +11,25 @@ error: using `chunks_exact` with a constant chunk size
   --> tests/ui/chunks_exact_with_const_size.rs:14:24
    |
 LL |     let result = slice.chunks_exact(CHUNK_SIZE);
-   |                  ------^^^^^^^^^^^^^^^^^^^^^^^^
-   |                  |
-   |                  help: consider using `as_chunks` instead: `slice.as_chunks::<CHUNK_SIZE>().0.iter()`
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<CHUNK_SIZE>().0.iter()`
 
 error: using `chunks_exact` with a constant chunk size
   --> tests/ui/chunks_exact_with_const_size.rs:23:24
    |
 LL |     let result = slice.chunks_exact(3);
-   |                  ------^^^^^^^^^^^^^^^
-   |                  |
-   |                  help: consider using `as_chunks` instead: `slice.as_chunks::<3>().0.iter()`
+   |                        ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0.iter()`
 
 error: using `chunks_exact_mut` with a constant chunk size
   --> tests/ui/chunks_exact_with_const_size.rs:28:22
    |
 LL |     let result = arr.chunks_exact_mut(4);
-   |                  ----^^^^^^^^^^^^^^^^^^^
-   |                  |
-   |                  help: consider using `as_chunks` instead: `arr.as_chunks_mut::<4>().0.iter()`
+   |                      ^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks_mut::<4>().0.iter()`
 
 error: using `chunks_exact` with a constant chunk size
   --> tests/ui/chunks_exact_with_const_size.rs:32:60
    |
 LL |     let result = slice.iter().copied().collect::<Vec<_>>().chunks_exact(2);
-   |                  ------------------------------------------^^^^^^^^^^^^^^^
-   |                  |
-   |                  help: consider using `as_chunks` instead: `slice.iter().copied().collect::<Vec<_>>().as_chunks::<2>().0.iter()`
+   |                                                            ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<2>().0.iter()`
 
 error: aborting due to 5 previous errors
 

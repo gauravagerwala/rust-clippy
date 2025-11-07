@@ -5072,7 +5072,7 @@ impl Methods {
                     }
                 },
                 (name @ (sym::chunks_exact | sym::chunks_exact_mut), [arg]) => {
-                    chunks_exact_with_const_size::check(cx, recv, arg, expr.span, call_span, name, self.msrv);
+                    chunks_exact_with_const_size::check(cx, recv, arg, call_span, name, self.msrv);
                 },
                 (sym::and_then, [arg]) => {
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
