@@ -1,20 +1,21 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 use super::CHUNKS_EXACT_WITH_CONST_SIZE;
 
 pub(super) fn check(
     cx: &LateContext<'_>,
-    expr: &Expr<'_>,
     recv: &Expr<'_>,
     arg: &Expr<'_>,
+    expr_span: Span,
+    call_span: Span,
     method_name: Symbol,
     msrv: Msrv,
 ) {
@@ -38,16 +39,21 @@ pub(super) fn check(
         let recv_str = snippet_with_applicability(cx, recv.span, "_", &mut applicability);
         let arg_str = snippet_with_applicability(cx, arg.span, "_", &mut applicability);
 
-        let suggestion = format!("{recv_str}.{suggestion_method}::<{arg_str}>().0.iter()");
+        let suggestion = format!("{recv_str}.{suggestion_method}::<{arg_str}>()");
 
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             CHUNKS_EXACT_WITH_CONST_SIZE,
-            expr.span,
+            call_span,
             format!("using `{method_name}` with a constant chunk size"),
-            "consider using `as_chunks` instead",
-            suggestion,
-            applicability,
+            |diag| {
+                diag.span_suggestion(
+                    expr_span,
+                    "consider using `as_chunks` instead",
+                    suggestion,
+                    applicability,
+                );
+            },
         );
     }
 

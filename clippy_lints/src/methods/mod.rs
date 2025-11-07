@@ -5677,7 +5677,7 @@ impl Methods {
             }
         }
         // Handle method calls whose receiver and arguments may come from expansion
-        if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
+        if let ExprKind::MethodCall(path, recv, args, call_span) = expr.kind {
             let method_span = path.ident.span;
 
             // Those methods do their own method name checking as they deal with multiple methods.
@@ -5744,7 +5744,7 @@ impl Methods {
                     );
                 },
                 (name @ (sym::chunks_exact | sym::chunks_exact_mut), [arg]) => {
-                    chunks_exact_with_const_size::check(cx, expr, recv, arg, name, self.msrv);
+                    chunks_exact_with_const_size::check(cx, recv, arg, expr.span, call_span, name, self.msrv);
                 },
                 _ => {},
             }
