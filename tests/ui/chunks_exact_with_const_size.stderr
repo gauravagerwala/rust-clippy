@@ -2,9 +2,8 @@ error: using `chunks_exact` with a constant chunk size
   --> tests/ui/chunks_exact_with_const_size.rs:8:18
    |
 LL |     let mut it = slice.chunks_exact(4);
-   |                  ^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `slice.as_chunks::<4>().0.iter()`
    |
-   = help: consider using `as_chunks::<4>()` for better ergonomics
    = note: `-D clippy::chunks-exact-with-const-size` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_with_const_size)]`
 
@@ -12,25 +11,19 @@ error: using `chunks_exact` with a constant chunk size
   --> tests/ui/chunks_exact_with_const_size.rs:14:18
    |
 LL |     let mut it = slice.chunks_exact(CHUNK_SIZE);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using `as_chunks::<CHUNK_SIZE>()` for better ergonomics
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `slice.as_chunks::<CHUNK_SIZE>().0.iter()`
 
 error: using `chunks_exact` with a constant chunk size
   --> tests/ui/chunks_exact_with_const_size.rs:24:18
    |
 LL |     let mut it = slice.chunks_exact(3);
-   |                  ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using `as_chunks::<3>()` for better ergonomics
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `slice.as_chunks::<3>().0.iter()`
 
 error: using `chunks_exact_mut` with a constant chunk size
-  --> tests/ui/chunks_exact_with_const_size.rs:31:18
+  --> tests/ui/chunks_exact_with_const_size.rs:30:18
    |
 LL |     let mut it = arr.chunks_exact_mut(4);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using `as_chunks_mut::<4>()` for better ergonomics
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `arr.as_chunks_mut::<4>().0.iter()`
 
 error: aborting due to 4 previous errors
 

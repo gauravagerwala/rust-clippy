@@ -1,8 +1,9 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
+use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_span::Symbol;
@@ -25,20 +26,28 @@ pub(super) fn check(
     // Check if argument is a constant
     let constant_eval = ConstEvalCtxt::new(cx);
     if let Some(Constant::Int(_)) = constant_eval.eval(arg) {
-        // Emit the lint
-        let suggestion = if method_name == sym::chunks_exact_mut {
+        // Determine the suggested method name
+        let suggestion_method = if method_name == sym::chunks_exact_mut {
             "as_chunks_mut"
         } else {
             "as_chunks"
         };
-        let arg_str = snippet(cx, arg.span, "_");
-        span_lint_and_help(
+
+        // Build the suggestion with proper applicability tracking
+        let mut applicability = Applicability::MachineApplicable;
+        let recv_str = snippet_with_applicability(cx, recv.span, "_", &mut applicability);
+        let arg_str = snippet_with_applicability(cx, arg.span, "_", &mut applicability);
+
+        let suggestion = format!("{recv_str}.{suggestion_method}::<{arg_str}>().0.iter()");
+
+        span_lint_and_sugg(
             cx,
             CHUNKS_EXACT_WITH_CONST_SIZE,
             expr.span,
             format!("using `{method_name}` with a constant chunk size"),
-            None,
-            format!("consider using `{suggestion}::<{arg_str}>()` for better ergonomics"),
+            "consider using `as_chunks` instead",
+            suggestion,
+            applicability,
         );
     }
 
