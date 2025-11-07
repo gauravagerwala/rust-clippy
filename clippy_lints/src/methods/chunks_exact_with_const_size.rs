@@ -27,6 +27,11 @@ pub(super) fn check(
     // Check if argument is a constant
     let constant_eval = ConstEvalCtxt::new(cx);
     if let Some(Constant::Int(_)) = constant_eval.eval(arg) {
+        // Check for Rust version - only check after we know we would emit a lint
+        if !msrv.meets(cx, msrvs::AS_CHUNKS) {
+            return;
+        }
+
         // Determine the suggested method name
         let suggestion_method = if method_name == sym::chunks_exact_mut {
             "as_chunks_mut"
@@ -56,7 +61,4 @@ pub(super) fn check(
             },
         );
     }
-
-    // Check for Rust version
-    if !msrv.meets(cx, msrvs::AS_CHUNKS) {}
 }
