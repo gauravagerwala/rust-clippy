@@ -1,5 +1,6 @@
 #![warn(clippy::chunks_exact_with_const_size)]
 #![allow(unused)]
+#![allow(clippy::iter_cloned_collect)]
 
 fn main() {
     let slice = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -25,5 +26,9 @@ fn main() {
     // Should trigger - mutable variant
     let mut arr = [1, 2, 3, 4, 5, 6, 7, 8];
     let result = arr.chunks_exact_mut(4);
+    //~^ chunks_exact_with_const_size
+
+    // Should trigger - multiline expression
+    let result = slice.iter().copied().collect::<Vec<_>>().chunks_exact(2);
     //~^ chunks_exact_with_const_size
 }

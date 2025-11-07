@@ -39,7 +39,7 @@ pub(super) fn check(
         let recv_str = snippet_with_applicability(cx, recv.span, "_", &mut applicability);
         let arg_str = snippet_with_applicability(cx, arg.span, "_", &mut applicability);
 
-        let suggestion = format!("{recv_str}.{suggestion_method}::<{arg_str}>()");
+        let suggestion = format!("{recv_str}.{suggestion_method}::<{arg_str}>().0.iter()");
 
         span_lint_and_then(
             cx,
