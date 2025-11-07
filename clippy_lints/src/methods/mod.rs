@@ -5071,6 +5071,9 @@ impl Methods {
                         _ => {},
                     }
                 },
+                (name @ (sym::chunks_exact | sym::chunks_exact_mut), [arg]) => {
+                    chunks_exact_with_const_size::check(cx, recv, arg, expr.span, call_span, name, self.msrv);
+                },
                 (sym::and_then, [arg]) => {
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
                     let biom_result_linted = bind_instead_of_map::check_and_then_ok(cx, expr, recv, arg);
@@ -5677,7 +5680,7 @@ impl Methods {
             }
         }
         // Handle method calls whose receiver and arguments may come from expansion
-        if let ExprKind::MethodCall(path, recv, args, call_span) = expr.kind {
+        if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
             let method_span = path.ident.span;
 
             // Those methods do their own method name checking as they deal with multiple methods.
@@ -5742,9 +5745,6 @@ impl Methods {
                         self.allow_unwrap_in_tests,
                         unwrap_expect_used::Variant::Unwrap,
                     );
-                },
-                (name @ (sym::chunks_exact | sym::chunks_exact_mut), [arg]) => {
-                    chunks_exact_with_const_size::check(cx, recv, arg, expr.span, call_span, name, self.msrv);
                 },
                 _ => {},
             }
