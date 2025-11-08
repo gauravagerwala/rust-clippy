@@ -29,6 +29,11 @@ fn main() {
     //~^ chunks_exact_with_const_size
 
     // Should trigger - multiline expression
-    let result = slice.iter().copied().collect::<Vec<_>>().chunks_exact(2);
+    #[rustfmt::skip]
+    let result = slice
+        .iter()
+        .copied()
+        .collect::<Vec<_>>()
+        .chunks_exact(2);
     //~^ chunks_exact_with_const_size
 }

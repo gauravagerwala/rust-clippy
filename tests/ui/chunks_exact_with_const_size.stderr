@@ -26,10 +26,10 @@ LL |     let result = arr.chunks_exact_mut(4);
    |                      ^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks_mut::<4>().0.iter()`
 
 error: using `chunks_exact` with a constant chunk size
-  --> tests/ui/chunks_exact_with_const_size.rs:32:60
+  --> tests/ui/chunks_exact_with_const_size.rs:37:10
    |
-LL |     let result = slice.iter().copied().collect::<Vec<_>>().chunks_exact(2);
-   |                                                            ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<2>().0.iter()`
+LL |         .chunks_exact(2);
+   |          ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<2>().0.iter()`
 
 error: aborting due to 5 previous errors
 
