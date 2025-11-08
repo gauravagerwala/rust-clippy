@@ -2107,7 +2107,7 @@ declare_clippy_lint! {
     /// let slice = [1, 2, 3, 4, 5, 6];
     /// let (chunks, remainder) = slice.as_chunks::<2>();
     /// let remainder_chunk = chunk_iter.1;
-    /// for chunk in chunk_iter.0.iter() {
+    /// for chunk in chunk_iter.0.iter() {}
     /// ```
     #[clippy::version = "1.93.0"]
     pub CHUNKS_EXACT_WITH_CONST_SIZE,
