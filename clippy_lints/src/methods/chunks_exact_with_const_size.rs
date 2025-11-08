@@ -40,7 +40,7 @@ pub(super) fn check(
         let mut applicability = Applicability::MachineApplicable;
         let arg_str = snippet_with_applicability(cx, arg.span, "_", &mut applicability);
 
-        let as_chunks = format!("{suggestion_method}::<{arg_str}>()");
+        let as_chunks = format_args!("{suggestion_method}::<{arg_str}>()");
 
         span_lint_and_then(
             cx,
@@ -49,7 +49,7 @@ pub(super) fn check(
             format!("using `{method_name}` with a constant chunk size"),
             |diag| {
                 if let Node::LetStmt(let_stmt) = cx.tcx.parent_hir_node(expr.hir_id) {
-                    diag.help(format!("consider using `{as_chunks}` instead"));
+                    diag.span_help(call_span, format!("consider using `{as_chunks}` instead"));
 
                     // Try to extract the variable name to provide a more helpful note
                     if let PatKind::Binding(_, _, ident, _) = let_stmt.pat.kind {
