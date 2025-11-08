@@ -49,6 +49,26 @@ pub(super) fn check(
             format!("using `{method_name}` with a constant chunk size"),
             |diag| {
                 if let Node::LetStmt(let_stmt) = cx.tcx.parent_hir_node(expr.hir_id) {
+                    // The `ChunksExact(Mut)` struct is stored for later -- this likely means that the user intends to
+                    // not only use it as an iterator, but also access the remainder using
+                    // `(into_)remainder`. For now, just give a help message in this case.
+                    // TODO: give a suggestion that replaces this:
+                    // ```
+                    // let chunk_iter = bytes.chunks_exact(CHUNK_SIZE);
+                    // let remainder_chunk = chunk_iter.remainder();
+                    // for chunk in chunk_iter {
+                    //     /* ... */
+                    // }
+                    // ```
+                    // with this:
+                    // ```
+                    // let chunk_iter = bytes.as_chunks::<CHUNK_SIZE>();
+                    // let remainder_chunk = chunk_iter.1;
+                    // for chunk in chunk_iter.0.iter() {
+                    //     /* ... */
+                    // }
+                    // ```
+
                     diag.span_help(call_span, format!("consider using `{as_chunks}` instead"));
 
                     // Try to extract the variable name to provide a more helpful note
