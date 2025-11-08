@@ -1,5 +1,5 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
@@ -45,19 +45,14 @@ pub(super) fn check(
         // Suggestion replaces just "chunks_exact(N)" with "as_chunks::<N>().0.iter()"
         let suggestion = format!("{suggestion_method}::<{arg_str}>().0.iter()");
 
-        span_lint_and_then(
+        span_lint_and_sugg(
             cx,
             CHUNKS_EXACT_WITH_CONST_SIZE,
             call_span,
             format!("using `{method_name}` with a constant chunk size"),
-            |diag| {
-                diag.span_suggestion(
-                    call_span,
-                    "consider using `as_chunks` instead",
-                    suggestion,
-                    applicability,
-                );
-            },
+            "consider using `as_chunks` instead",
+            suggestion,
+            applicability,
         );
     }
 }
