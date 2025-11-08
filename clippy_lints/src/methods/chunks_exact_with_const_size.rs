@@ -1,10 +1,10 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
+use rustc_hir::{Expr, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::{Span, Symbol};
 
@@ -14,6 +14,7 @@ pub(super) fn check(
     cx: &LateContext<'_>,
     recv: &Expr<'_>,
     arg: &Expr<'_>,
+    expr: &Expr<'_>,
     call_span: Span,
     method_name: Symbol,
     msrv: Msrv,
@@ -23,36 +24,48 @@ pub(super) fn check(
         return;
     }
 
-    // Check if argument is a constant
     let constant_eval = ConstEvalCtxt::new(cx);
     if let Some(Constant::Int(_)) = constant_eval.eval(arg) {
-        // Check for Rust version - only check after we know we would emit a lint
+        // Check for Rust version
         if !msrv.meets(cx, msrvs::AS_CHUNKS) {
             return;
         }
 
-        // Determine the suggested method name
         let suggestion_method = if method_name == sym::chunks_exact_mut {
             "as_chunks_mut"
         } else {
             "as_chunks"
         };
 
-        // Build the suggestion with proper applicability tracking
         let mut applicability = Applicability::MachineApplicable;
         let arg_str = snippet_with_applicability(cx, arg.span, "_", &mut applicability);
 
-        // Suggestion replaces just "chunks_exact(N)" with "as_chunks::<N>().0.iter()"
-        let suggestion = format!("{suggestion_method}::<{arg_str}>().0.iter()");
+        let as_chunks = format!("{suggestion_method}::<{arg_str}>()");
 
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             CHUNKS_EXACT_WITH_CONST_SIZE,
             call_span,
             format!("using `{method_name}` with a constant chunk size"),
-            "consider using `as_chunks` instead",
-            suggestion,
-            applicability,
+            |diag| {
+                if let Node::LetStmt(let_stmt) = cx.tcx.parent_hir_node(expr.hir_id) {
+                    diag.help(format!("consider using `{as_chunks}` instead"));
+
+                    // Try to extract the variable name to provide a more helpful note
+                    if let PatKind::Binding(_, _, ident, _) = let_stmt.pat.kind {
+                        diag.note(format!(
+                            "you can access the chunks using `{ident}.0.iter()`, and the remainder using `{ident}.1`"
+                        ));
+                    }
+                } else {
+                    diag.span_suggestion(
+                        call_span,
+                        "consider using `as_chunks` instead",
+                        format!("{as_chunks}.0.iter()"),
+                        applicability,
+                    );
+                }
+            },
         );
     }
 }

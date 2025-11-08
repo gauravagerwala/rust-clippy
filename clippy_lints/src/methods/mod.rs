@@ -2106,7 +2106,8 @@ declare_clippy_lint! {
     /// ```no_run
     /// let slice = [1, 2, 3, 4, 5, 6];
     /// let (chunks, remainder) = slice.as_chunks::<2>();
-    /// for chunk in chunks {}
+    /// let remainder_chunk = chunk_iter.1;
+    /// for chunk in chunk_iter.0.iter() {
     /// ```
     #[clippy::version = "1.93.0"]
     pub CHUNKS_EXACT_WITH_CONST_SIZE,
@@ -5072,7 +5073,7 @@ impl Methods {
                     }
                 },
                 (name @ (sym::chunks_exact | sym::chunks_exact_mut), [arg]) => {
-                    chunks_exact_with_const_size::check(cx, recv, arg, call_span, name, self.msrv);
+                    chunks_exact_with_const_size::check(cx, recv, arg, expr, call_span, name, self.msrv);
                 },
                 (sym::and_then, [arg]) => {
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
