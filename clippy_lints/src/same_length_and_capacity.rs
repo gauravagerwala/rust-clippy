@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::{SpanlessEq, sym};
+use clippy_utils::{eq_expr_value, sym};
 use rustc_hir::{Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
             && is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), rustc_sym::Vec)
             && fn_path.ident.name == sym::from_raw_parts
-            && SpanlessEq::new(cx).eq_expr(&args[1], &args[2])
+            && eq_expr_value(cx, &args[1], &args[2])
         {
             span_lint_and_help(
                 cx,
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
             && is_type_lang_item(cx, cx.typeck_results().node_type(ty.hir_id), LangItem::String)
             && fn_path.ident.name == sym::from_raw_parts
-            && SpanlessEq::new(cx).eq_expr(&args[1], &args[2])
+            && eq_expr_value(cx, &args[1], &args[2])
         {
             span_lint_and_help(
                 cx,
