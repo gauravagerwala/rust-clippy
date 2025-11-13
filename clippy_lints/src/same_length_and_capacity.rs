@@ -76,32 +76,29 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Call(path_expr, args) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
-            && cx.typeck_results().node_type(ty.hir_id).is_diag_item(cx, rustc_sym::Vec)
             && fn_path.ident.name == sym::from_raw_parts
             && eq_expr_value(cx, &args[1], &args[2])
         {
-            span_lint_and_help(
-                cx,
-                SAME_LENGTH_AND_CAPACITY,
-                expr.span,
-                "usage of `Vec::from_raw_parts` with the same expression for length and capacity",
-                None,
-                "consider reconstructing the `Vec` using a `Box` instead, e.g. `Box::from(slice::from_raw_parts(...)).into_vec()`",
-            );
-        } else if let ExprKind::Call(path_expr, args) = expr.kind
-            && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
-            && cx.typeck_results().node_type(ty.hir_id).is_lang_item(cx, LangItem::String)
-            && fn_path.ident.name == sym::from_raw_parts
-            && eq_expr_value(cx, &args[1], &args[2])
-        {
-            span_lint_and_help(
-                cx,
-                SAME_LENGTH_AND_CAPACITY,
-                expr.span,
-                "usage of `String::from_raw_parts` with the same expression for length and capacity",
-                None,
-                "consider reconstructing the `String` using `String::from` instead, e.g. `String::from(str::from_utf8_unchecked(slice::from_raw_parts(...)))`",
-            );
+            let middle_ty = cx.typeck_results().node_type(ty.hir_id);
+            if middle_ty.is_diag_item(cx, rustc_sym::Vec) {
+                span_lint_and_help(
+                    cx,
+                    SAME_LENGTH_AND_CAPACITY,
+                    expr.span,
+                    "usage of `Vec::from_raw_parts` with the same expression for length and capacity",
+                    None,
+                    "consider reconstructing the `Vec` using a `Box` instead, e.g. `Box::from(slice::from_raw_parts(...)).into_vec()`",
+                );
+            } else if middle_ty.is_lang_item(cx, LangItem::String) {
+                span_lint_and_help(
+                    cx,
+                    SAME_LENGTH_AND_CAPACITY,
+                    expr.span,
+                    "usage of `String::from_raw_parts` with the same expression for length and capacity",
+                    None,
+                    "consider reconstructing the `String` using `String::from` instead, e.g. `String::from(str::from_utf8_unchecked(slice::from_raw_parts(...)))`",
+                );
+            }
         }
     }
 }
