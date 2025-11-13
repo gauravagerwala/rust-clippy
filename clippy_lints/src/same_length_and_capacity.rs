@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::{eq_expr_value, sym};
 use rustc_hir::{Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Call(path_expr, args) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
-            && is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), rustc_sym::Vec)
+            && cx.typeck_results().node_type(ty.hir_id).is_diag_item(cx, rustc_sym::Vec)
             && fn_path.ident.name == sym::from_raw_parts
             && eq_expr_value(cx, &args[1], &args[2])
         {
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
             );
         } else if let ExprKind::Call(path_expr, args) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
-            && is_type_lang_item(cx, cx.typeck_results().node_type(ty.hir_id), LangItem::String)
+            && cx.typeck_results().node_type(ty.hir_id).is_lang_item(cx, LangItem::String)
             && fn_path.ident.name == sym::from_raw_parts
             && eq_expr_value(cx, &args[1], &args[2])
         {
