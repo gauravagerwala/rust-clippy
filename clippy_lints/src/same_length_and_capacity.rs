@@ -77,6 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
         if let ExprKind::Call(path_expr, args) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
             && fn_path.ident.name == sym::from_raw_parts
+            && args.len() >= 3
             && eq_expr_value(cx, &args[1], &args[2])
         {
             let middle_ty = cx.typeck_results().node_type(ty.hir_id);
