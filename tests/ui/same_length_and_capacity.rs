@@ -13,6 +13,10 @@ fn main() {
     // Don't want to lint different expressions for len and cap
     let _properly_reconstructed_vec = unsafe { Vec::from_raw_parts(ptr, len, cap) };
 
+    // Don't want to lint if len and cap are distinct variables but happen to be equal
+    let len_from_cap = cap;
+    let _another_properly_reconstructed_vec = unsafe { Vec::from_raw_parts(ptr, len_from_cap, cap) };
+
     let my_string = String::from("hello");
     let (string_ptr, string_len, string_cap) = my_string.into_raw_parts();
 
