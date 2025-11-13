@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
                 expr.span,
                 "usage of `Vec::from_raw_parts` with the same expression for length and capacity",
                 None,
-                "if the length and capacity are the same, you most likely went through a boxed slice; consider reconstructing the `Vec` using a `Box` instead, e.g. `Box::from(slice::from_raw_parts(...)).into_vec()`",
+                "consider reconstructing the `Vec` using a `Box` instead, e.g. `Box::from(slice::from_raw_parts(...)).into_vec()`",
             );
         } else if let ExprKind::Call(path_expr, args) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
                 expr.span,
                 "usage of `String::from_raw_parts` with the same expression for length and capacity",
                 None,
-                "if the length and capacity are the same, you most likely went through a boxed `str`; consider reconstructing the `String` using `String::from` instead, e.g. `String::from(str::from_utf8_unchecked(slice::from_raw_parts(...)))`",
+                "consider reconstructing the `String` using `String::from` instead, e.g. `String::from(str::from_utf8_unchecked(slice::from_raw_parts(...)))`",
             );
         }
     }
