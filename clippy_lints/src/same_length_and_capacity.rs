@@ -9,7 +9,7 @@ use rustc_span::symbol::sym as rustc_sym;
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for usages of Vec::from_raw_parts and String::from_raw_parts
+    /// Checks for usages of `Vec::from_raw_parts` and `String::from_raw_parts`
     /// where the same expression is used for the length and the capacity.
     ///
     /// ### Why is this bad?
@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// capacity, it is most likely a semantic error. In the case of a
     /// Vec, for example, the only way to end up with one that has
     /// the same length and capacity is by going through a boxed slice,
-    /// e.g. Box::from(some_vec), which shrinks the capacity to match
+    /// e.g. `Box::from(some_vec)`, which shrinks the capacity to match
     /// the length.
     ///
     /// ### Example
