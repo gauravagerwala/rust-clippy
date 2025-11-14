@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
                     expr.span,
                     "usage of `Vec::from_raw_parts` with the same expression for length and capacity",
                     None,
-                    "consider reconstructing the `Vec` using a `Box` instead, e.g. `Box::from(slice::from_raw_parts(...)).into_vec()`",
+                    "try `Box::from(slice::from_raw_parts(...)).into::<Vec<_>>()`",
                 );
             } else if middle_ty.is_lang_item(cx, LangItem::String) {
                 span_lint_and_help(
@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
                     expr.span,
                     "usage of `String::from_raw_parts` with the same expression for length and capacity",
                     None,
-                    "consider reconstructing the `String` using `String::from` instead, e.g. `String::from(str::from_utf8_unchecked(slice::from_raw_parts(...)))`",
+                    "try `String::from(str::from_utf8_unchecked(slice::from_raw_parts(...)))`",
                 );
             }
         }
