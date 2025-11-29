@@ -6,6 +6,7 @@ use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node, PatKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 use rustc_span::{Span, Symbol};
 
 use super::CHUNKS_EXACT_WITH_CONST_SIZE;
@@ -19,8 +20,10 @@ pub(super) fn check(
     method_name: Symbol,
     msrv: Msrv,
 ) {
-    // Check if receiver is slice-like
-    if !cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_slice() {
+    // Check if receiver is a single reference to a slice (`&[T]` or `&mut [T]`)
+    // `as_chunks` and `as_chunks_mut` are only available on slice references, not on types that deref to slices
+    let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
+    if !matches!(recv_ty.kind(), ty::Ref(_, inner, _) if inner.is_slice()) {
         return;
     }
 
