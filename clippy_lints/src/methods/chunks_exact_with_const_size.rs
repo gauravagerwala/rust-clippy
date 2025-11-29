@@ -1,3 +1,4 @@
+use super::CHUNKS_EXACT_WITH_CONST_SIZE;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
@@ -9,8 +10,6 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{Span, Symbol};
 
-use super::CHUNKS_EXACT_WITH_CONST_SIZE;
-
 pub(super) fn check(
     cx: &LateContext<'_>,
     recv: &Expr<'_>,
@@ -21,7 +20,8 @@ pub(super) fn check(
     msrv: Msrv,
 ) {
     // Check if receiver is a single reference to a slice (`&[T]` or `&mut [T]`)
-    // `as_chunks` and `as_chunks_mut` are only available on slice references, not on types that deref to slices
+    // `as_chunks` and `as_chunks_mut` are only available on slice references, not on types that deref
+    // to slices
     let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
     if !matches!(recv_ty.kind(), ty::Ref(_, inner, _) if inner.is_slice()) {
         return;
