@@ -1,20 +1,20 @@
 use super::CHUNKS_EXACT_WITH_CONST_SIZE;
-use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
+use clippy_utils::visitors::is_const_evaluatable;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{Span, Symbol};
 
-pub(super) fn check(
-    cx: &LateContext<'_>,
-    recv: &Expr<'_>,
-    arg: &Expr<'_>,
-    expr: &Expr<'_>,
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    recv: &'tcx Expr<'tcx>,
+    arg: &'tcx Expr<'tcx>,
+    expr: &'tcx Expr<'tcx>,
     call_span: Span,
     method_name: Symbol,
     msrv: Msrv,
@@ -24,8 +24,7 @@ pub(super) fn check(
         return;
     }
 
-    let constant_eval = ConstEvalCtxt::new(cx);
-    if let Some(Constant::Int(_)) = constant_eval.eval(arg) {
+    if is_const_evaluatable(cx, arg) {
         if !msrv.meets(cx, msrvs::AS_CHUNKS) {
             return;
         }
