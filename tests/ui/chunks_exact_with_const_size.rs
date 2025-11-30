@@ -22,11 +22,14 @@ fn main() {
         let _ = chunk;
     }
 
-    // Should trigger - chunks_exact_mut with direct iteration (gets suggestion)
-    // Note: The suggestion uses .iter() but should use .iter_mut() - this is a known limitation
+    // Should trigger - chunks_exact_mut with direct iteration (gets suggestion without .iter())
     let mut arr = [1, 2, 3, 4, 5, 6, 7, 8];
     for chunk in arr.chunks_exact_mut(4) {
         //~^ chunks_exact_with_const_size
         let _ = chunk;
     }
+
+    // Should trigger - used with iterator method (not for loop, so needs .iter())
+    let _: Vec<_> = slice.chunks_exact(4).collect();
+    //~^ chunks_exact_with_const_size
 }

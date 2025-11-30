@@ -1,9 +1,10 @@
 use super::CHUNKS_EXACT_WITH_CONST_SIZE;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::higher::ForLoop;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::sym;
 use clippy_utils::visitors::is_const_evaluatable;
+use clippy_utils::{get_parent_expr, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node, PatKind};
 use rustc_lint::LateContext;
@@ -75,10 +76,27 @@ pub(super) fn check<'tcx>(
                         ));
                     }
                 } else {
+                    let in_for_loop = {
+                        let mut cur_expr = expr;
+                        loop {
+                            if let Some(parent_expr) = get_parent_expr(cx, cur_expr) {
+                                if let Some(for_loop) = ForLoop::hir(parent_expr)
+                                    && for_loop.arg.hir_id == expr.hir_id
+                                {
+                                    break true;
+                                }
+                                cur_expr = parent_expr;
+                            } else {
+                                break false;
+                            }
+                        }
+                    };
+
+                    let suffix = if in_for_loop { ".0" } else { ".0.iter()" };
                     diag.span_suggestion(
                         call_span,
                         "consider using `as_chunks` instead",
-                        format!("{as_chunks}.0.iter()"),
+                        format!("{as_chunks}{suffix}"),
                         applicability,
                     );
                 }
