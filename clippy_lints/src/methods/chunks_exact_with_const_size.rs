@@ -19,9 +19,6 @@ pub(super) fn check(
     method_name: Symbol,
     msrv: Msrv,
 ) {
-    // Check if receiver is a single reference to a slice (`&[T]` or `&mut [T]`)
-    // `as_chunks` and `as_chunks_mut` are only available on slice references, not on types that deref
-    // to slices
     let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
     if !matches!(recv_ty.kind(), ty::Ref(_, inner, _) if inner.is_slice()) {
         return;
@@ -29,7 +26,6 @@ pub(super) fn check(
 
     let constant_eval = ConstEvalCtxt::new(cx);
     if let Some(Constant::Int(_)) = constant_eval.eval(arg) {
-        // Check for Rust version
         if !msrv.meets(cx, msrvs::AS_CHUNKS) {
             return;
         }
@@ -74,7 +70,6 @@ pub(super) fn check(
 
                     diag.span_help(call_span, format!("consider using `{as_chunks}` instead"));
 
-                    // Try to extract the variable name to provide a more helpful note
                     if let PatKind::Binding(_, _, ident, _) = let_stmt.pat.kind {
                         diag.note(format!(
                             "you can access the chunks using `{ident}.0.iter()`, and the remainder using `{ident}.1`"
