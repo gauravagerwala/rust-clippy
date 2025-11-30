@@ -32,4 +32,14 @@ fn main() {
     // Should trigger - used with iterator method (not for loop, so needs .iter())
     let _: Vec<_> = slice.chunks_exact(4).collect();
     //~^ chunks_exact_with_const_size
+
+    // Should NOT trigger - macro-expanded sizes are not recognized as const by is_const_evaluatable
+    macro_rules! chunk_size {
+        () => {
+            4
+        };
+    }
+    for chunk in slice.chunks_exact(chunk_size!()) {
+        let _ = chunk;
+    }
 }
