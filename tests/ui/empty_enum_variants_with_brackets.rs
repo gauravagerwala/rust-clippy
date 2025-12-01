@@ -115,4 +115,21 @@ fn issue16157() {
     <E>::V {} = E::V();
 }
 
+fn variant_with_braces() {
+    enum E {
+        V(),
+        //~^ empty_enum_variants_with_brackets
+    }
+    E::V() = E::V();
+    E::V() = E::V {};
+    <E>::V {} = <E>::V {};
+
+    enum F {
+        U {},
+        //~^ empty_enum_variants_with_brackets
+    }
+    F::U {} = F::U {};
+    <F>::U {} = F::U {};
+}
+
 fn main() {}
