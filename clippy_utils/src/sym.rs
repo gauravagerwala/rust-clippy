@@ -302,6 +302,7 @@ generate! {
     read_to_string,
     read_unaligned,
     read_volatile,
+    recycle,
     redundant_imports,
     redundant_pub_crate,
     regex,
