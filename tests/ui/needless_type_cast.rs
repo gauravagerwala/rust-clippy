@@ -143,3 +143,40 @@ fn test_generic_initializer() {
     let _ = a as i32;
     let _ = a as i32;
 }
+
+fn test_unsafe_transmute() {
+    // Should not lint: initializer contains unsafe block
+    #[allow(clippy::useless_transmute)]
+    let x: u32 = unsafe { std::mem::transmute(0u32) };
+    let _ = x as u64;
+}
+
+fn test_if_with_generic() {
+    // Should not lint: one branch has generic return type
+    let x: u8 = if true { generic(1) } else { 2 };
+    let _ = x as i32;
+}
+
+fn test_match_with_generic() {
+    // Should not lint: one branch has generic return type
+    let x: u8 = match 1 {
+        1 => generic(1),
+        _ => 2,
+    };
+    let _ = x as i32;
+}
+
+fn test_default() {
+    // Should not lint: Default::default() has generic return type
+    let x: u8 = Default::default();
+    let _ = x as i32;
+}
+
+fn test_loop_with_generic() {
+    // Should not lint: loop break has generic return type
+    #[allow(clippy::never_loop)]
+    let x: u8 = loop {
+        break generic(1);
+    };
+    let _ = x as i32;
+}

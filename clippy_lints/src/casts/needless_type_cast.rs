@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
+use clippy_utils::visitors::{Descend, for_each_expr, for_each_expr_without_closures};
 use core::ops::ControlFlow;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Body, Expr, ExprKind, HirId, LetStmt, PatKind, StmtKind};
+use rustc_hir::{BlockCheckMode, Body, Expr, ExprKind, HirId, LetStmt, PatKind, StmtKind, UnsafeSource};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_span::Span;
@@ -55,7 +55,11 @@ fn collect_binding_from_let<'a>(
     let_expr: &rustc_hir::LetExpr<'a>,
     bindings: &mut FxHashMap<HirId, BindingInfo<'a>>,
 ) {
-    if let_expr.ty.is_none() || let_expr.span.from_expansion() || has_generic_return_type(cx, let_expr.init) {
+    if let_expr.ty.is_none()
+        || let_expr.span.from_expansion()
+        || has_generic_return_type(cx, let_expr.init)
+        || contains_unsafe(let_expr.init)
+    {
         return;
     }
 
@@ -82,7 +86,9 @@ fn collect_binding_from_local<'a>(
 ) {
     if let_stmt.ty.is_none()
         || let_stmt.span.from_expansion()
-        || let_stmt.init.is_some_and(|init| has_generic_return_type(cx, init))
+        || let_stmt
+            .init
+            .is_some_and(|init| has_generic_return_type(cx, init) || contains_unsafe(init))
     {
         return;
     }
@@ -103,8 +109,48 @@ fn collect_binding_from_local<'a>(
     }
 }
 
+fn contains_unsafe(expr: &Expr<'_>) -> bool {
+    for_each_expr_without_closures(expr, |e| {
+        if let ExprKind::Block(block, _) = e.kind
+            && let BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) = block.rules
+        {
+            return ControlFlow::Break(());
+        }
+        ControlFlow::Continue(())
+    })
+    .is_some()
+}
+
 fn has_generic_return_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match &expr.kind {
+        ExprKind::Block(block, _) => {
+            if let Some(tail_expr) = block.expr {
+                return has_generic_return_type(cx, tail_expr);
+            }
+            false
+        },
+        ExprKind::If(_, then_block, else_expr) => {
+            has_generic_return_type(cx, then_block) || else_expr.is_some_and(|e| has_generic_return_type(cx, e))
+        },
+        ExprKind::Match(_, arms, _) => arms.iter().any(|arm| has_generic_return_type(cx, arm.body)),
+        ExprKind::Loop(block, label, ..) => for_each_expr_without_closures(*block, |e| {
+            match e.kind {
+                ExprKind::Loop(..) => {
+                    // Unlabeled breaks inside nested loops target the inner loop, not ours
+                    return ControlFlow::Continue(Descend::No);
+                },
+                ExprKind::Break(dest, Some(break_expr)) => {
+                    let targets_this_loop =
+                        dest.label.is_none() || dest.label.map(|l| l.ident) == label.map(|l| l.ident);
+                    if targets_this_loop && has_generic_return_type(cx, break_expr) {
+                        return ControlFlow::Break(());
+                    }
+                },
+                _ => {},
+            }
+            ControlFlow::Continue(Descend::Yes)
+        })
+        .is_some(),
         ExprKind::MethodCall(..) => {
             if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                 let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
@@ -158,7 +204,6 @@ fn is_cast_in_generic_context<'a>(cx: &LateContext<'a>, cast_expr: &Expr<'a>) ->
         match parent {
             rustc_hir::Node::Expr(parent_expr) => {
                 match &parent_expr.kind {
-                    // Closure body is a separate type inference context
                     ExprKind::Closure(_) => return false,
                     ExprKind::Call(callee, _) => {
                         if let ExprKind::Path(qpath) = &callee.kind {
