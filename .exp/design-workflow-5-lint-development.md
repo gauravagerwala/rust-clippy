@@ -21,7 +21,7 @@ Other aspects: Lints support configuration options, MSRV restrictions via attrib
 
 ## Scaffolding Sequence Diagram
 
-\`\`\`mermaid
+```mermaid
 sequenceDiagram
     participant Developer
     participant "cargo dev new_lint" as NewLintTool
@@ -42,11 +42,11 @@ sequenceDiagram
     UpdateTool->>LibRs: Update mod declarations between comments
     UpdateTool->>README: Update lint counts and links
     Note over UpdateTool: Handles deprecated and renamed lints too
-\`\`\`
+```
 
 ## Integration and Execution Sequence Diagram
 
-\`\`\`mermaid
+```mermaid
 sequenceDiagram
     participant User
     participant "cargo clippy" as CargoClippy
@@ -62,7 +62,7 @@ sequenceDiagram
     Driver->>Compiler: run compilation with registered lints
     Store->>Compiler: execute lint passes during compilation phases
     Compiler->>User: output diagnostics from lints
-\`\`\`
+```
 
 ## Additional High-Level Design Aspects
 
