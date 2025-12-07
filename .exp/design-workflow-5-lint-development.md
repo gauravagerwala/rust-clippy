@@ -57,7 +57,8 @@ sequenceDiagram
     User->>CargoClippy: run cargo clippy on project
     CargoClippy->>Driver: invoke driver as rustc wrapper
     Driver->>LintsCrate: load and call register_lint_passes on store
-    LintsCrate->>Store: extend early and late lint passes with lint impls
+    LintsCrate->>LintsCrate: initialize shared resources (e.g., FormatArgsStorage::default())
+    LintsCrate->>Store: extend early and late lint passes with lint impls (passing cloned resources to stateful lints)
     Driver->>Store: create LintListBuilder, insert declared_lints LINTS, register lints and groups
     Driver->>Compiler: run compilation with registered lints
     Store->>Compiler: execute lint passes during compilation phases
@@ -83,13 +84,15 @@ The \`update_lints\` tool parses all \`declare_clippy_lint!\` macros across \`cl
 
 This ensures new lints are automatically included when compiling \`clippy_lints\`.
 
-### Lint Implementation Details
+### Lint Implementation Details (updated)
 
 - **Declaration**: \`declare_clippy_lint!\` expands to \`declare_tool_lint!\` (from rustc) plus \`LintInfo\` static with category, explanation, etc.
-- **Passes**: Early passes (AST/HIR pre-analysis) vs. late (after typeck, access to MIR/ty).
+- **Passes**: Early passes (AST/HIR pre-analysis) vs. late (after typeck, access to MIR/ty). Updated.
 - **Hooks**: Lints impl methods like \`check_expr\`, \`check_item\` using visitor patterns or queries via \`cx\`.
 - **Groups and Levels**: Lints assigned to categories (correctness, style, etc.) auto-grouped by \`LintListBuilder\`; levels (Allow, Warn, Deny).
 - **Fixes**: Use \`rustfix::diagnostics::Diagnostic::fix` for auto-fixes via \`--fix\`.
+
+- **Stateful Passes**: Some lints require state for efficient analysis, such as \`FormatArgsStorage\` from \`clippy_utils::macros\` for parsing \`format!\` and other formatting macros. This storage is created once in \`clippy_lints/src/lib.rs::register_lint_passes\` and cloned into the constructors of relevant lint passes (e.g., lints in \`format_args\` group). This pattern allows sharing parsed data across invocations. The \`format_push_string\` lint, enhanced in [PR #16093](https://github.com/rust-lang/rust-clippy/pull/16093), uses this to detect \`format!\` calls even in nested contexts and generate code suggestions replacing them with \`write!\`.
 
 ### Edge Cases and Extensibility
 
