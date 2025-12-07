@@ -62,6 +62,38 @@ sequenceDiagram
     Driver->>Compiler: run compilation with registered lints
     Store->>Compiler: execute lint passes during compilation phases
     Compiler->>User: output diagnostics from lints
+
+## Doc Lint Event Processing Sequence Diagram
+### (New sub-flow for documentation lints, added by PR #16144)
+
+```mermaid
+sequenceDiagram
+    participant Pass as "Documentation Pass"
+    participant CA as check_attrs
+    participant CD as check_doc
+    participant P as Parser
+    participant SM as State Machines
+    participant CX as LateContext
+
+    Pass->>+CA: check doc attributes
+    CA->>+CD: doc, fragments, valid_idents
+    CD->>+P: pulldown_cmark::Parser::new(doc, opts, callback)
+    loop for each event
+        P->>+CD: (Event, Range<usize>)
+        CD->>+SM: sm.check(cx, event, range, doc, fragments)
+        Note right of SM: Accumulate state<br/>e.g., track pending links or paragraph ends
+        alt lint trigger
+            SM->>+CX: span_lint_and_then(lint, span, msg, sugg)
+        end
+        SM-->>-CD: 
+    end
+    CD-->>-CA: DocHeaders
+    CA-->>-Pass: 
+    P-->>-CD: 
+
+    Note over CD, SM: Single parse, modular event processing
+```
+
 \`\`\`
 
 ## Additional High-Level Design Aspects
@@ -90,6 +122,7 @@ This ensures new lints are automatically included when compiling \`clippy_lints\
 - **Hooks**: Lints impl methods like \`check_expr\`, \`check_item\` using visitor patterns or queries via \`cx\`.
 - **Groups and Levels**: Lints assigned to categories (correctness, style, etc.) auto-grouped by \`LintListBuilder\`; levels (Allow, Warn, Deny).
 - **Fixes**: Use \`rustfix::diagnostics::Diagnostic::fix` for auto-fixes via \`--fix\`.
+- **Documentation Lints**: Documentation lints in \`clippy_lints/src/doc/\` are grouped under the \`Documentation\` late lint pass. Markdown parsing of doc comments is performed once per attribute group in the \`check_doc\` function, generating \`pulldown_cmark::Event\`s with byte ranges. Specific lints like \`doc_link_code\` and \`doc_paragraphs_missing_punctuation\` implement state machines as structs (e.g., \`LinkCode\`, \`MissingPunctuation\`) with a \`check\` method that processes each event, maintaining internal state (e.g., pending links, paragraph position) and emitting diagnostics via \`span_lint_and_then\` when patterns match. These are instantiated in \`check_doc\` and called in its main event loop. This design, refined in [PR #16144](https://github.com/rust-lang/rust-clippy/pull/16144), ensures efficient single-pass analysis and modularity. New doc lints should adopt this event-driven pattern.
 
 ### Edge Cases and Extensibility
 
