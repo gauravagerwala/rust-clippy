@@ -1,0 +1,85 @@
+{
+  "workflows": [
+    {
+      "name": "cargo-clippy",
+      "description": "Run Clippy as a Cargo subcommand to analyze and lint Rust code in projects, including workspaces and dependencies.",
+      "input": "Cargo.toml-based project directory, optional flags like --all-targets, --fix, environment variables like RUSTFLAGS, configuration files like clippy.toml.",
+      "output": "Lint diagnostics printed to stdout/stderr, optionally modified source files if --fix is used, exit code indicating errors.",
+      "entry_point": "src/main.rs (cargo-clippy binary)",
+      "relevant_files": ["src/main.rs", "src/driver.rs", "clippy_lints/src/", "clippy_utils/src/", "clippy_config/src/", "rustc_tools_util/src/"],
+      "doc": ".exp/design-workflow-1-cargo-clippy.md"
+    },
+    {
+      "name": "clippy-driver",
+      "description": "Invoke Clippy directly as a compiler driver similar to rustc for linting individual files or non-Cargo setups.",
+      "input": "Rust source files (.rs), rustc-like command-line arguments, optional sysroot.",
+      "output": "Lint diagnostics, compiled artifacts if compilation succeeds.",
+      "entry_point": "src/driver.rs",
+      "relevant_files": ["src/driver.rs", "clippy_lints/src/", "clippy_utils/src/"],
+      "doc": ".exp/design-workflow-2.md"
+    },
+    {
+      "name": "build-source",
+      "description": "Compile Clippy from source code, including all sub-crates and binaries.",
+      "input": "Rust toolchain (nightly recommended), Cargo workspace configuration.",
+      "output": "Executable binaries (cargo-clippy, clippy-driver) in target/debug or target/release.",
+      "entry_point": "Cargo.toml (root package), build.rs",
+      "relevant_files": ["Cargo.toml", "build.rs", "rustc_tools_util/src/lib.rs", "clippy_dummy/"],
+      "doc": ".exp/design-workflow-3.md"
+    },
+    {
+      "name": "testing",
+      "description": "Execute comprehensive tests including unit tests, UI tests, compile-tests, and dogfooding to validate lints and codebase.",
+      "input": "Test configurations in tests/, UI test files in ui/ and tests/ui-*, updated via cargo bless.",
+      "output": "Pass/fail status, detailed logs, updated .stderr and .fixed files for UI tests.",
+      "entry_point": "tests/compile-test.rs (for compile tests), cargo test for unit, clippy_dev/src/dogfood.rs for dogfooding",
+      "relevant_files": ["tests/", "ui/", "tests/ui-*/", "clippy_dev/src/dogfood.rs", "clippy_dev/src/main.rs"],
+      "doc": ".exp/design-workflow-4.md"
+    },
+    {
+      "name": "lint-development",
+      "description": "Develop and integrate new lints or modify existing ones, including registration and testing.",
+      "input": "Lint logic implementation, test cases, lint metadata.",
+      "output": "New or updated lint modules in clippy_lints, registered in central lint declarations.",
+      "entry_point": "clippy_dev/src/new_lint.rs (cargo dev new_lint), clippy_lints/src/<lint>.rs",
+      "relevant_files": ["clippy_dev/src/new_lint.rs", "clippy_dev/src/update_lints.rs", "clippy_lints/src/", "declare_clippy_lint/src/lib.rs", "tests/ui/"],
+      "doc": ".exp/design-workflow-5.md"
+    },
+    {
+      "name": "lintcheck",
+      "description": "Run Clippy on a curated set of external crates to detect regressions, false positives, or new lint triggers.",
+      "input": "Crate lists in lintcheck_*.toml, optional filters or targets.",
+      "output": "JSON or text logs of lint applications, diffs for changes.",
+      "entry_point": "lintcheck/src/main.rs (cargo lintcheck)",
+      "relevant_files": ["lintcheck/src/main.rs", "lintcheck/lintcheck_crates.toml", "lintcheck/ci_crates.toml", "lintcheck/ci-config/"],
+      "doc": ".exp/design-workflow-6.md"
+    },
+    {
+      "name": "deprecate-lint",
+      "description": "Deprecate an existing lint, remove its implementation, and update references.",
+      "input": "Lint name to deprecate.",
+      "output": "Removed code, updated registries, migration guides if needed.",
+      "entry_point": "clippy_dev/src/deprecate_lint.rs (cargo dev deprecate)",
+      "relevant_files": ["clippy_dev/src/deprecate_lint.rs", "clippy_lints/src/", "declare_clippy_lint/src/"],
+      "doc": ".exp/design-workflow-7-deprecate-lint.md"
+    },
+    {
+      "name": "release-process",
+      "description": "Manage the release cycle including version bumping, changelog updates, tagging, and publishing to crates.io.",
+      "input": "New version string, release notes.",
+      "output": "New git tags, published crate versions, updated documentation.",
+      "entry_point": "clippy_dev/src/release.rs (cargo dev release)",
+      "relevant_files": ["clippy_dev/src/release.rs", "book/src/development/infrastructure/release.md", "CHANGELOG.md"],
+      "doc": ".exp/design-workflow-8.md"
+    },
+    {
+      "name": "sync-rustc",
+      "description": "Synchronize Clippy's dependencies and code with updates to the Rust compiler internals.",
+      "input": "Target rustc commit or version.",
+      "output": "Updated vendored sources or Cargo deps, adapted API usages.",
+      "entry_point": "clippy_dev/src/sync.rs (cargo dev sync)",
+      "relevant_files": ["clippy_dev/src/sync.rs", "book/src/development/infrastructure/sync.md", "Cargo.toml (various)"],
+      "doc": ".exp/design-workflow-9.md"
+    }
+  ]
+}
