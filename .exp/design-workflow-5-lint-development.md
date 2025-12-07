@@ -87,7 +87,7 @@ This ensures new lints are automatically included when compiling \`clippy_lints\
 
 - **Declaration**: \`declare_clippy_lint!\` expands to \`declare_tool_lint!\` (from rustc) plus \`LintInfo\` static with category, explanation, etc.
 - **Passes**: Early passes (AST/HIR pre-analysis) vs. late (after typeck, access to MIR/ty).
-- **Hooks**: Lints impl methods like \`check_expr\`, \`check_item\` using visitor patterns or queries via \`cx\`.
+- **Hooks**: Lints impl methods like \`check_expr\`, \`check_item\` using visitor patterns or queries via \`cx\`. For example, the \`disallowed_methods\` lint (updated in PR #16186) adds a check \`if expr.span.desugaring_kind().is_some() { return; }\` in \`check_expr\` to avoid linting compiler-generated code from desugarings like \`async\` blocks or \`.await\` expressions, preventing false positives.
 - **Groups and Levels**: Lints assigned to categories (correctness, style, etc.) auto-grouped by \`LintListBuilder\`; levels (Allow, Warn, Deny).
 - **Fixes**: Use \`rustfix::diagnostics::Diagnostic::fix` for auto-fixes via \`--fix\`.
 
