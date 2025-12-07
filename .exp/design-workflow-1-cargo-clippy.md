@@ -61,7 +61,8 @@ sequenceDiagram
     LS->>CL: Register declared_lints::LINTS
     CL-->>LS: Lint metadata registered
     LS->>CL: clippy_lints::register_lint_passes(store, conf)
-    CL-->>LS: LintPass instances registered (filtered by conf)
+    Note right of CL: internally: initialize shared resources (e.g., FormatArgsStorage::default())
+    CL-->>LS: LintPass instances registered (filtered by conf, some stateful with cloned resources)
     Note over RI: Compilation pipeline executes:<br/>- Parse to AST<br/>- Expand/lower to HIR<br/>- MIR construction<br/>- At each phase, applicable lints run via visitors/checkers
     alt --fix mode
         Note over CL,RI: Lints emit rustfix suggestions
