@@ -31,13 +31,14 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 mod almost_standard_lint_formulation;
-mod collapsible_calls;
+mod collapsible_span_lint_calls;
 mod derive_deserialize_allowing_unknown;
 mod internal_paths;
 mod lint_without_lint_pass;
 mod msrv_attr_impl;
 mod outer_expn_data_pass;
 mod produce_ice;
+mod repeated_is_diagnostic_item;
 mod symbols;
 mod unnecessary_def_path;
 mod unsorted_clippy_utils_paths;
@@ -47,7 +48,7 @@ use rustc_lint::{Lint, LintStore};
 
 static LINTS: &[&Lint] = &[
     almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION,
-    collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS,
+    collapsible_span_lint_calls::COLLAPSIBLE_SPAN_LINT_CALLS,
     derive_deserialize_allowing_unknown::DERIVE_DESERIALIZE_ALLOWING_UNKNOWN,
     lint_without_lint_pass::DEFAULT_LINT,
     lint_without_lint_pass::INVALID_CLIPPY_VERSION_ATTRIBUTE,
@@ -68,7 +69,7 @@ pub fn register_lints(store: &mut LintStore) {
 
     store.register_early_pass(|| Box::new(unsorted_clippy_utils_paths::UnsortedClippyUtilsPaths));
     store.register_early_pass(|| Box::new(produce_ice::ProduceIce));
-    store.register_late_pass(|_| Box::new(collapsible_calls::CollapsibleCalls));
+    store.register_late_pass(|_| Box::new(collapsible_span_lint_calls::CollapsibleCalls));
     store.register_late_pass(|_| Box::new(derive_deserialize_allowing_unknown::DeriveDeserializeAllowingUnknown));
     store.register_late_pass(|_| Box::<symbols::Symbols>::default());
     store.register_late_pass(|_| Box::<lint_without_lint_pass::LintWithoutLintPass>::default());
@@ -77,4 +78,5 @@ pub fn register_lints(store: &mut LintStore) {
     store.register_late_pass(|_| Box::new(msrv_attr_impl::MsrvAttrImpl));
     store.register_late_pass(|_| Box::new(almost_standard_lint_formulation::AlmostStandardFormulation::new()));
     store.register_late_pass(|_| Box::new(unusual_names::UnusualNames));
+    store.register_late_pass(|_| Box::new(repeated_is_diagnostic_item::RepeatedIsDiagnosticItem));
 }

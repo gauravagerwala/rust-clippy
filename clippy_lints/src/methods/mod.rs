@@ -74,6 +74,7 @@ mod map_err_ignore;
 mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
+mod map_unwrap_or_else;
 mod map_with_unused_argument_over_ranges;
 mod mut_mutex_lock;
 mod needless_as_bytes;
@@ -89,7 +90,6 @@ mod open_options;
 mod option_as_ref_cloned;
 mod option_as_ref_deref;
 mod option_map_or_none;
-mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
 mod path_buf_push_overwrite;
@@ -889,7 +889,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub SEARCH_IS_SOME,
-    complexity,
+    nursery,
     "using an iterator or string search followed by `is_some()` or `is_none()`, which is more succinctly expressed as a call to `any()` or `contains()` (with negation in case of `is_none()`)"
 }
 
@@ -3933,7 +3933,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where f is a function or closure that returns the `bool` type.
+    /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where `f` is a function or closure that returns the `bool` type.
+    ///
     /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`.
     ///
     /// ### Why is this bad?
@@ -4670,7 +4671,7 @@ declare_clippy_lint! {
     /// let x = vec![String::new()];
     /// let _ = x.iter().map(|x| x.len());
     /// ```
-    #[clippy::version = "1.90.0"]
+    #[clippy::version = "1.92.0"]
     pub REDUNDANT_ITER_CLONED,
     perf,
     "detects redundant calls to `Iterator::cloned`"
@@ -4694,7 +4695,7 @@ declare_clippy_lint! {
     /// let x: Option<u32> = Some(4);
     /// let y = x.unwrap_or_else(|| 2 * k);
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.92.0"]
     pub UNNECESSARY_OPTION_MAP_OR_ELSE,
     suspicious,
     "making no use of the \"map closure\" when calling `.map_or_else(|| 2 * k, |n| n)`"
@@ -5531,10 +5532,10 @@ impl Methods {
                     stable_sort_primitive::check(cx, expr, recv);
                 },
                 (sym::sort_by, [arg]) => {
-                    unnecessary_sort_by::check(cx, expr, recv, arg, false);
+                    unnecessary_sort_by::check(cx, expr, call_span, arg, false);
                 },
                 (sym::sort_unstable_by, [arg]) => {
-                    unnecessary_sort_by::check(cx, expr, recv, arg, true);
+                    unnecessary_sort_by::check(cx, expr, call_span, arg, true);
                 },
                 (sym::split, [arg]) => {
                     str_split::check(cx, expr, recv, arg);
@@ -5576,7 +5577,7 @@ impl Methods {
                     unnecessary_fallible_conversions::check_method(cx, expr);
                 },
                 (sym::to_owned, []) => {
-                    if !suspicious_to_owned::check(cx, expr, recv) {
+                    if !suspicious_to_owned::check(cx, expr, span) {
                         implicit_clone::check(cx, name, expr, recv);
                     }
                 },
@@ -5604,17 +5605,10 @@ impl Methods {
                 (sym::unwrap_or, [u_arg]) => {
                     match method_call(recv) {
                         Some((arith @ (sym::checked_add | sym::checked_sub | sym::checked_mul), lhs, [rhs], _, _)) => {
-                            manual_saturating_arithmetic::check(
-                                cx,
-                                expr,
-                                lhs,
-                                rhs,
-                                u_arg,
-                                &arith.as_str()[const { "checked_".len() }..],
-                            );
+                            manual_saturating_arithmetic::check_unwrap_or(cx, expr, lhs, rhs, u_arg, arith);
                         },
                         Some((sym::map, m_recv, [m_arg], span, _)) => {
-                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
+                            map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
                         },
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(
@@ -5632,8 +5626,11 @@ impl Methods {
                 },
                 (sym::unwrap_or_default, []) => {
                     match method_call(recv) {
+                        Some((sym::checked_sub, lhs, [rhs], _, _)) => {
+                            manual_saturating_arithmetic::check_sub_unwrap_or_default(cx, expr, lhs, rhs);
+                        },
                         Some((sym::map, m_recv, [arg], span, _)) => {
-                            manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
+                            manual_is_variant_and::check_map_unwrap_or_default(cx, expr, m_recv, arg, span, self.msrv);
                         },
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(
@@ -5652,7 +5649,7 @@ impl Methods {
                 (sym::unwrap_or_else, [u_arg]) => {
                     match method_call(recv) {
                         Some((sym::map, recv, [map_arg], _, _))
-                            if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, self.msrv) => {},
+                            if map_unwrap_or_else::check(cx, expr, recv, map_arg, u_arg, self.msrv) => {},
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(
                                 cx,
