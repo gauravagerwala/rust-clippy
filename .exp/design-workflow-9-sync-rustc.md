@@ -52,7 +52,7 @@ sequenceDiagram
     Note over D: Updates rustup branch in clippy-local (personal fork)
     D->>CR: git fetch upstream (rust-lang/rust remote)
     D->>CR: git switch rustup
-    D->>CR: git merge upstream/master --no-ff
+    D->>CR: git merge upstream/main --no-ff
     Note over CR: Merge commit syncs rust changes - allowed exception to no-merge policy
     D->>CR: cargo dev sync update_nightly
     Note over CR: Updates rust-toolchain.toml channel=nightly-YYYY-MM-DD<br/>and README.md block
@@ -68,13 +68,13 @@ sequenceDiagram
     participant RR as rust-lang/rust Repo
     participant CR as rust-clippy Repo
     Note over D,RR: Ensure in rust-lang/rust repo dir
-    D->>RR: git switch master (pull latest)
+    D->>RR: git switch main (pull latest)
     D->>RR: git switch -c clippy-subtree-update
     D->>RR: git subtree pull -P src/tools/clippy clippy-upstream master
     Note over RR: Pulls latest from official clippy master into subtree
     D->>RR: git commit changes (if needed)
     D->>RR: git push origin clippy-subtree-update
-    Note over RR: Create and merge PR to rust-lang/rust master
+    Note over RR: Create and merge PR to rust-lang/rust main
 ```
 
 ## Other High-Level Design Aspects
