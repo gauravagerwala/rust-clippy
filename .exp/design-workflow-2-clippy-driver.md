@@ -24,7 +24,7 @@ This workflow ensures deep integration with Rust's compiler pipeline, allowing l
   - Early passes (AST/HIR-based, e.g., formatting, doc checks).
   - Late passes (typed analysis, e.g., type checks, method calls).
   - Supports conditional enabling via \`Conf\`.
-- **Configuration Loader (clippy_config)**: \`Conf::read\` parses \`clippy.toml\`, inline attributes (\`#[allow(clippy::lint)]\`), CLI overrides; influences lint levels and params.
+- **Configuration Loader (clippy_config)**: \`Conf::read\` parses \`clippy.toml\`, inline attributes (\`#[allow(clippy::lint)]\`), CLI overrides; provides fields like \`msrv\` for lints to access via constructors, influencing levels, params, and version-aware behavior.
 - **Lint Utilities (clippy_utils)**: Reusable functions for lints (e.g., type queries, def path matching, expression analysis).
 - **Rustc Infrastructure**: \`rustc_driver\`, \`rustc_interface\`, \`rustc_session\` for session management, diagnostics; \`rustc_lint\` for pass registration.
 - **Development Helpers**: Tracks files/envs for incremental builds; ICE hook for bug reporting to GitHub.
@@ -102,7 +102,7 @@ sequenceDiagram
 
 - **Performance Considerations**: MIR opt level set to 0 avoids optimizations that could obscure bugs (e.g., constant folding); disables specific passes like \`CheckNull\`. Trade-off: Slower compilation for accuracy.
 - **Incremental Compilation**: Tracks runtime-accessed files (Cargo.toml, clippy.toml, driver exe) in \`file_depinfo\` and envs (CLIPPY_CONF_DIR, CLIPPY_ARGS) for Cargo-triggered rebuilds.
-- **Configuration Flexibility**: Hierarchical (CLI > file > attributes); supports lint groups, custom params (e.g., max nesting depth).
+- **Configuration Flexibility**: Hierarchical (CLI > file > attributes); supports lint groups, custom params (e.g., max nesting depth), and MSRV settings in `clippy.toml` that lints can use via `conf.msrv` for version-aware behavior (e.g., `multiple_unsafe_ops_per_block` adjusts logic based on MSRV).
 - **Fallback and Compatibility**: Supports plain rustc delegation for queries or suppressed lints; handles arg files (\`@path\`), sysroot env.
 - **Extensibility**: Lints implement traits like \`EarlyLintPass\` or \`LateLintPass\`; new ones added via dev tools, auto-registered in \`lib.rs\`.
 - **Diagnostics**: Leverages rustc's system for structured output (spans, suggestions via rustfix); colorized via anstream.

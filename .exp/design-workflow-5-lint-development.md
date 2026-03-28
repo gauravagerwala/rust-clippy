@@ -11,13 +11,13 @@ From analysis of source code (e.g., \`clippy_dev/src/new_lint.rs\`, \`clippy_dev
 - **clippy_dev**: CLI tools (\`cargo dev\`) including \`new_lint\` for scaffolding and \`update_lints\` for generating registration code from parsed lint declarations.
 - **clippy_lints**: Core library housing all lint implementations as structs implementing \`rustc_lint::EarlyLintPass\` or \`LateLintPass\`. Each lint file (\`src/<lint>.rs\` or in submodules like \`methods/\`) contains a \`declare_clippy_lint!\` invocation defining metadata (name, level, category, description, version, location).
 - **declare_clippy_lint**: Crate providing the macro for lint declaration (generates \`Lint\` static and \`LintInfo\`) and \`LintListBuilder\` for bulk registration of individual lints and groups (e.g., \`clippy::all\`, \`clippy::correctness\`).
-- **clippy_utils**: Shared utilities for common lint tasks (e.g., type queries, def path matching, expression analysis).
+- **clippy_utils**: Shared utilities for common lint tasks (e.g., type queries, def path matching, expression analysis, MSRV checking via the `msrvs` module to enable version-specific lint behavior).
 - **tests/ui/**: UI test infrastructure where each lint has a subdirectory with input \`.rs\` files and expected \`.stderr\` outputs (and \`.fixed\` for fixes) from Clippy runs to verify diagnostics.
 - **clippy-driver** (in root \`src/driver.rs\`): Custom compiler driver that loads \`clippy_lints\`, uses generated \`declared_lints::LINTS\` to register lints via \`LintListBuilder\`, calls \`register_lint_passes\` to add passes, and hooks into rustc's pipeline.
 - **lintcheck**: Separate tool (\`lintcheck/src/main.rs\`) for running lints on external crates listed in \`.toml\` files to detect regressions or false positives/negatives.
 - **clippy_config**: Handles lint configuration from \`clippy.toml\` and attributes, used in passes.
 
-Other aspects: Lints support configuration options, MSRV restrictions via attributes, categories for grouping, and integration with rustfix for auto-fixes.
+Other aspects: Lints support configuration options (via `new(conf)` and lint-specific fields in `Conf`), MSRV-aware behavior via `conf.msrv` and attributes for restrictions, categories for grouping, and integration with rustfix for auto-fixes.
 
 ## Scaffolding Sequence Diagram
 
@@ -40,6 +40,9 @@ sequenceDiagram
     UpdateTool->>LintImpl: Parse all declare clippy lint invocations
     UpdateTool->>DeclaredLints: Update LINTS array including new lint
     UpdateTool->>LibRs: Update mod declarations between comments
+    alt lint requires Conf access (e.g., for MSRV checks)
+        Developer->>LibRs: Manually update register_lint_passes instantiation to pass conf to new(conf)
+    end
     UpdateTool->>README: Update lint counts and links
     Note over UpdateTool: Handles deprecated and renamed lints too
 \`\`\`
@@ -81,6 +84,8 @@ The \`update_lints\` tool parses all \`declare_clippy_lint!\` macros across \`cl
 - Refresh docs (README.md, book/, CHANGELOG.md) with lint counts (rounded to 50) and markdown links.
 - Manage deprecated/renamed lints in \`deprecated_lints.rs\` and dedicated UI tests.
 
+For lints that require access to the configuration (\`Conf\`), such as to use \`conf.msrv\` for MSRV-dependent logic, the developer must manually update the instantiation of the lint pass in the \`register_lint_passes\` function in \`clippy_lints/src/lib.rs\`. Specifically, modify the closure to capture \`conf\` and pass it to the lint's \`new(conf)\` method, e.g., from \`Box::new(|_| Box::new(LintName))\` to \`Box::new(move |_| Box::new(LintName::new(conf)))\`. This step is not automated by \`update_lints\`.
+
 This ensures new lints are automatically included when compiling \`clippy_lints\`.
 
 ### Lint Implementation Details
@@ -90,6 +95,7 @@ This ensures new lints are automatically included when compiling \`clippy_lints\
 - **Hooks**: Lints impl methods like \`check_expr\`, \`check_item\` using visitor patterns or queries via \`cx\`.
 - **Groups and Levels**: Lints assigned to categories (correctness, style, etc.) auto-grouped by \`LintListBuilder\`; levels (Allow, Warn, Deny).
 - **Fixes**: Use \`rustfix::diagnostics::Diagnostic::fix` for auto-fixes via \`--fix\`.
+- **Configuration Access**: Lints can implement a \`new(conf: &Conf)\` constructor to access runtime configuration, such as \`conf.msrv\` for adapting logic based on the project's minimum supported Rust version (configured in \`clippy.toml\`). This allows lints to provide accurate diagnostics respecting the MSRV, e.g., not flagging stabilized safe operations in older versions.
 
 ### Edge Cases and Extensibility
 

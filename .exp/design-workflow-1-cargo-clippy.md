@@ -79,7 +79,7 @@ sequenceDiagram
   - Ancestor directories.
   - Code attributes.
   - CLI flags passed via `CLIPPY_ARGS` (e.g., `-W clippy::perf`).
-- **Application**: Used to filter and level lints during registration. Supports groups (correctness, style, perf, etc.) and MSRV specifications.
+- **Application**: Used to filter and level lints during registration and to enable lint-specific behavior via access to `Conf` fields like `conf.msrv` for version-dependent logic (e.g., adjusting unsafe operation counts in `multiple_unsafe_ops_per_block` based on MSRV). Supports groups (correctness, style, perf, etc.) and MSRV specifications in `clippy.toml`.
 - **Tracking**: Config files and env vars are added to `ParseSess`'s depinfo for incremental builds.
 
 ## Lint Execution Details
