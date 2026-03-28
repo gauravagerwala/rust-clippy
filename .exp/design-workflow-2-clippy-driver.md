@@ -71,7 +71,7 @@ Clippy registers passes tailored to compiler phases; execution occurs interleave
 ### Registration Details
 - **Deprecated Handling**: Registers renames/removals for backward compatibility.
 - **Early Passes**: ~50+ implementations for syntax/style checks (e.g., \`DoubleParens\`, \`Formatting\`).
-- **Late Passes**: ~300+ for semantic analysis (e.g., \`Types\`, \`Methods\`, \`Loops\`), using \`TyCtxt\` for context.
+- **Late Passes**: ~300+ for semantic analysis (e.g., \`Types\`, \`Methods\`, \`Loops\`), using \`TyCtxt\` for context. These passes often include logic to skip analysis on desugared (compiler-generated) code, e.g., via \`expr.span.desugaring_kind().is_some()\`, as implemented in the \`disallowed_methods\` lint (updated in PR #16186) to avoid false positives on features like \`async\` desugaring to \`Future::poll\`.
 - **Shared State**: Some passes share storage (e.g., \`FormatArgsStorage\`) across lints.
 
 ### Execution Sequence

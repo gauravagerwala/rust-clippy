@@ -87,7 +87,7 @@ sequenceDiagram
 - **Phases**: Lints are categorized and run at specific compiler stages:
   - Early (pre-type-check): AST visitors in `misc_early/`.
   - Post-type-check: HIR/MIR analyses in other modules.
-- **Implementation**: Each lint is a struct implementing `rustc_lint::LintPass` (or early variant), defining `get_lints()` and visitor/check methods.
+- **Implementation**: Each lint is a struct implementing `rustc_lint::LintPass` (or early variant), defining `get_lints()` and visitor/check methods. Late lints, for example, may use span information like `expr.span.desugaring_kind()` to skip compiler-generated code, as in the `disallowed_methods` lint updated by PR #16186 to ignore desugared expressions and reduce false positives.
 - **Diagnostics**: Emit via `sess.emit_warning()`, `emit_error()`, etc., with spans, explanations, and optional fixes.
 - **Fixes**: Many lints integrate with `rustfix` for `--fix` mode, generating edit suggestions applied by `cargo fix`.
 
