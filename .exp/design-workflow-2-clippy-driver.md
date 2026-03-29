@@ -49,7 +49,7 @@ sequenceDiagram
         D->>D: Add --cfg clippy, CLIPPY_ARGS
         D->>RD: run_compiler(args, ClippyCallbacks)
         RD->>C: config() - load conf, set opts (mir_opt_level=0)
-        C->>LS: register_lint_passes() - add early/late lints
+        C->>LS: register_lint_passes() - init shared resources (e.g., FormatArgsStorage), add early/late lints (some with state)
         RD->>C: psess_created() - track deps (Cargo.toml, etc.)
         RD->>CP: Run phases (parse, expand, typeck, MIR, ...)
         loop During phases
